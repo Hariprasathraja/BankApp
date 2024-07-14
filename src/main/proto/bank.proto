@@ -1,7 +1,6 @@
 syntax="proto3";
 
-package demo.grpc;
-option java_package="com.demo.grpc";
+package com.demo.app;
 
 message AccountDetails{
   int32 accountnumber=1;
