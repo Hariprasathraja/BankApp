@@ -1,11 +1,15 @@
 plugins {
     id "com.google.protobuf" version "0.9.4"
+    id 'application'
     id 'java'
 }
 
 group = 'com.demo.grpc'
 version = '1.0-SNAPSHOT'
 
+application{
+    mainClass='com.demo.app.Main'
+}
 repositories {
     mavenCentral()
 }
@@ -21,6 +25,26 @@ dependencies {
     implementation group: 'io.grpc', name: 'grpc-all', version: '1.64.0'
 }
 
+protobuf {
+    // Configure the protoc executable
+    protoc {
+        // Download from repositories
+        artifact = 'com.google.protobuf:protoc:4.27.1'
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.64.1'
+        }
+    }
+
+    generateProtoTasks {
+        all().each {task ->
+            task.plugins {
+                grpc{}
+            }
+        }
+    }
+}
 
 test {
     useJUnitPlatform()
