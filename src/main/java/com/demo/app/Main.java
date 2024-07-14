@@ -1,6 +1,7 @@
 package com.demo.app;
 
 import com.demo.app.Bank;
+import com.demo.app.Bank.AccountDetails;
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
