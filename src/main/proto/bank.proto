@@ -7,3 +7,9 @@ message AccountDetails{
   string name=2;
   float balance=3;
 }
+service AccountService{
+  rpc GetAccountDetails(AccountRequest) returns (AccountDetails);
+}
+message AccountRequest{
+  int32 accountnumber=1;
+}

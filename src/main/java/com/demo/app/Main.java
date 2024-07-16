@@ -6,10 +6,7 @@ import com.demo.app.Bank.AccountDetails;
 public class Main {
     public static void main(String[] args) {
         System.out.print("Hello and welcome!");
-        AccountDetails accountDetails= AccountDetails.newBuilder().setName("Hari").build();
+        AccountDetails accountDetails= AccountDetails.newBuilder().setName("Raja").build();
         System.out.println(accountDetails.getName());
-        for (int i = 1; i <= 5; i++) {
-            System.out.println("i = " + i);
-        }
     }
 }
