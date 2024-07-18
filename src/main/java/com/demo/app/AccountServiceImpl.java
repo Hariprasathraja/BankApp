@@ -26,7 +26,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                 .build();
 
         server.start();
-        System.out.println("Server started and listening on"+ server.getPort());
+        System.out.println("Server started and listening on port "+ server.getPort());
 
         server.awaitTermination();
     }
