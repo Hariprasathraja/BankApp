@@ -2,25 +2,27 @@ package com.demo.app;
 import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
+import com.demo.app.Bank.UpdateAccountRequest;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.*;
 
 public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBase{
     private final AtomicInteger accountNumGenerator=new AtomicInteger((1000));
-
+    private final Map<Integer, AccountDetails> accounts=new HashMap<>();
     //Get AccountDetails Service
     @Override
     public void getAccountDetails(AccountRequest request, StreamObserver<AccountDetails> responseObserver){
-        int accountNumber=request.getAccountnumber();
+        int accountNumber=request.getAccountNumber();
 
-        AccountDetails accountDetails=AccountDetails.newBuilder()
-                .setAccountnumber(accountNumber)
-                .setName("Hari")
-                .setBalance(15000.0f)
-                .build();
+        AccountDetails accountDetails=accounts.getOrDefault(accountNumber,AccountDetails.newBuilder()
+                .setAccountNumber(accountNumber)
+                .setName("Unknown")
+                .setBalance(0.0f)
+                .build());
 
         responseObserver.onNext(accountDetails);
         responseObserver.onCompleted();
@@ -30,15 +32,34 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     @Override
     public void createAccount(CreateAccountRequest request,StreamObserver<AccountDetails> responseObserver){
         int accountNumber=accountNumGenerator.incrementAndGet();
-        String name=request.getName();
-        float initialBalance=request.getInitialBalance();
 
         AccountDetails accountDetails=AccountDetails.newBuilder()
-                .setAccountnumber(accountNumber)
-                .setName(name)
-                .setBalance(initialBalance)
+                .setAccountNumber(accountNumber)
+                .setName(request.getName())
+                .setBalance(request.getInitialBalance())
                 .build();
-
+        accounts.put(accountNumber,accountDetails);
+        responseObserver.onNext(accountDetails);
+        responseObserver.onCompleted();
+    }
+    @Override
+    public void updateAccount(UpdateAccountRequest request,StreamObserver<AccountDetails> responseObserver){
+        int accountNumber=request.getAccountNumber();
+        AccountDetails accountDetails;
+        if(accounts.containsKey(accountNumber)) {
+            accountDetails = AccountDetails.newBuilder()
+                    .setAccountNumber(accountNumber)
+                    .setName(request.getName())
+                    .setBalance(request.getBalance())
+                    .build();
+            accounts.put(accountNumber, accountDetails);
+        }else{
+            accountDetails=AccountDetails.newBuilder()
+                    .setAccountNumber(accountNumber)
+                    .setName("Account not found")
+                    .setBalance(0.0f)
+                    .build();
+        }
         responseObserver.onNext(accountDetails);
         responseObserver.onCompleted();
     }
