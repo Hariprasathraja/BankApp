@@ -3,20 +3,28 @@ syntax="proto3";
 package com.demo.app;
 
 message AccountDetails{
-  int32 accountnumber=1;
+  int32 accountNumber=1;
   string name=2;
   float balance=3;
 }
 
 message AccountRequest{
-  int32 accountnumber=1;
+  int32 accountNumber=1;
 }
 
 message CreateAccountRequest{
   string name=1;
   float initial_balance=2;
 }
+
+message UpdateAccountRequest{
+  int32 accountNumber=1;
+  string name=2;
+  float balance=3;
+}
+
 service AccountService{
   rpc GetAccountDetails(AccountRequest) returns (AccountDetails);
   rpc CreateAccount(CreateAccountRequest) returns (AccountDetails);
+  rpc UpdateAccount(UpdateAccountRequest) returns (AccountDetails);
 }
