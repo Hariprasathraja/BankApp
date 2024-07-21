@@ -3,6 +3,8 @@ import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
 import com.demo.app.Bank.UpdateAccountRequest;
+import com.demo.app.Bank.DeleteAccountRequest;
+import com.demo.app.Bank.DeleteAccountResponse;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -42,6 +44,8 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onNext(accountDetails);
         responseObserver.onCompleted();
     }
+
+    //UpdateAccount Service
     @Override
     public void updateAccount(UpdateAccountRequest request,StreamObserver<AccountDetails> responseObserver){
         int accountNumber=request.getAccountNumber();
@@ -64,7 +68,19 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onCompleted();
     }
 
+    //DeleteAccount Service
+    @Override
+    public void deleteAccount(DeleteAccountRequest request, StreamObserver<DeleteAccountResponse> responseObserver){
+        int accountNumber=request.getAccountNumber();
+        boolean success= accounts.remove(accountNumber)!=null;
 
+        DeleteAccountResponse response=DeleteAccountResponse.newBuilder()
+                .setSuccess(success)
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
     public static void main(String[] args)throws IOException, InterruptedException{
         Server server=ServerBuilder.forPort(50051)
                 .addService(new AccountServiceImpl())

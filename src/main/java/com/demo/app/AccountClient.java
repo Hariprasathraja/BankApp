@@ -3,6 +3,8 @@ import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
 import com.demo.app.Bank.UpdateAccountRequest;
+import com.demo.app.Bank.DeleteAccountRequest;
+import com.demo.app.Bank.DeleteAccountResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
@@ -18,6 +20,7 @@ public class AccountClient {
         AccountDetails response=blockingStub.getAccountDetails(request);
         System.out.println("Account name: "+response.getName());
         System.out.println("Account Balance: "+response.getBalance());
+        System.out.println();
     }
 
     //CreateAccount request
@@ -31,6 +34,7 @@ public class AccountClient {
         System.out.println("Created Account Number: "+response.getAccountNumber());
         System.out.println("Account name: "+response.getName());
         System.out.println("Account Balance: "+response.getBalance());
+        System.out.println();
     }
 
     //UpdateAccount request
@@ -45,6 +49,22 @@ public class AccountClient {
         System.out.println("Account Number: "+response.getAccountNumber());
         System.out.println("Updated name: "+response.getName());
         System.out.println("Account Balance: "+response.getBalance());
+        System.out.println();
+    }
+
+    //DeleteAccount request
+    public void deleteAccount(int accountNumber) {
+        DeleteAccountRequest request = DeleteAccountRequest.newBuilder()
+                .setAccountNumber(accountNumber)
+                .build();
+
+        DeleteAccountResponse response = blockingStub.deleteAccount(request);
+        if (response.getSuccess()) {
+            System.out.println("Account "+accountNumber+" deleted successfully");
+        }else{
+            System.out.println("Account not found/ Failed to delete account");
+        }
+        System.out.println();
     }
     public static void main(String[] args){
         ManagedChannel channel=ManagedChannelBuilder.forAddress("localhost",50051)
@@ -54,10 +74,12 @@ public class AccountClient {
         AccountClient client=new AccountClient(channel);
 
         //Create new Account
-        client.createAccount("Prasath",200060.0f);
+        client.createAccount("Hari",200060.0f);
+        client.createAccount("Raja",4000.0f);
 
         client.updateAccount(1002,"Raja",200050.0f);
 
+        client.deleteAccount(1001);
         client.getAccountDetails(1001);
         channel.shutdown();
     }
