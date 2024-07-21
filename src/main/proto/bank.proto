@@ -22,9 +22,15 @@ message UpdateAccountRequest{
   string name=2;
   float balance=3;
 }
-
+message DeleteAccountRequest{
+  int32 accountNumber=1;
+}
+message DeleteAccountResponse{
+  bool success=1;
+}
 service AccountService{
   rpc GetAccountDetails(AccountRequest) returns (AccountDetails);
   rpc CreateAccount(CreateAccountRequest) returns (AccountDetails);
   rpc UpdateAccount(UpdateAccountRequest) returns (AccountDetails);
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
 }
