@@ -7,6 +7,8 @@ import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
 import com.demo.app.Bank.WithDrawAmountRequest;
+import com.demo.app.Bank.TransferAmountRequest;
+import com.demo.app.Bank.TransferAmountResponse;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -93,7 +95,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
                     .setName(accountDetails.getName())
-                    .setBalance(accountDetails.getBalance()+request.getDeposit())
+                    .setBalance(accountDetails.getBalance()+request.getDepositAmount())
                     .build();
             accounts.put(accountNumber,accountDetails);
         }else{
@@ -113,11 +115,11 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int accountNumber=request.getAccountNumber();
         AccountDetails accountDetails=accounts.get(accountNumber);
 
-        if(accountDetails!=null && accountDetails.getBalance()-request.getWithDraw()>0.0f){
+        if(accountDetails!=null && accountDetails.getBalance()-request.getWithDrawAmount()>0.0f){
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
                     .setName(accountDetails.getName())
-                    .setBalance(accountDetails.getBalance()-request.getWithDraw())
+                    .setBalance(accountDetails.getBalance()-request.getWithDrawAmount())
                     .build();
             accounts.put(accountNumber,accountDetails);
         }else{
@@ -130,6 +132,43 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onNext(accountDetails);
         responseObserver.onCompleted();
     }
+
+    //TransferAmount Service
+    @Override
+    public void transferAmount(TransferAmountRequest request,StreamObserver<TransferAmountResponse> responseObserver){
+        int fromAccountNumber=request.getFromAccount();
+        int toAccountNumber=request.getToAccount();
+        float transferAmount =request.getTransferAmount();
+
+        AccountDetails fromAccountDetails=accounts.get(fromAccountNumber);
+        AccountDetails toAccountDetails=accounts.get(toAccountNumber);
+        boolean success=false;
+        if(fromAccountDetails!=null && fromAccountDetails.getBalance()- transferAmount >0.0f){
+            fromAccountDetails=AccountDetails.newBuilder()
+                    .setAccountNumber(fromAccountNumber)
+                    .setName(fromAccountDetails.getName())
+                    .setBalance(fromAccountDetails.getBalance()- transferAmount)
+                    .build();
+
+            toAccountDetails=AccountDetails.newBuilder()
+                    .setAccountNumber(toAccountNumber)
+                    .setName(toAccountDetails.getName())
+                    .setBalance(toAccountDetails.getBalance()+transferAmount)
+                    .build();
+
+            accounts.put(fromAccountNumber,fromAccountDetails);
+            accounts.put(toAccountNumber,toAccountDetails);
+
+            success=true;
+        }
+        TransferAmountResponse response=TransferAmountResponse.newBuilder()
+                .setSuccess(success)
+                .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+
     public static void main(String[] args)throws IOException, InterruptedException{
         Server server=ServerBuilder.forPort(50051)
                 .addService(new AccountServiceImpl())

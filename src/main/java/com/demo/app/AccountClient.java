@@ -7,6 +7,8 @@ import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
 import com.demo.app.Bank.WithDrawAmountRequest;
+import com.demo.app.Bank.TransferAmountRequest;
+import com.demo.app.Bank.TransferAmountResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
@@ -74,7 +76,7 @@ public class AccountClient {
     public void depositAmount(int accountNumber, float amount){
         DepositAmountRequest request=DepositAmountRequest.newBuilder()
                 .setAccountNumber(accountNumber)
-                .setDeposit(amount)
+                .setDepositAmount(amount)
                 .build();
 
         AccountDetails response=blockingStub.depositAmount(request);
@@ -92,7 +94,7 @@ public class AccountClient {
     public void withDrawAmount(int accountNumber, float amount){
         WithDrawAmountRequest request=WithDrawAmountRequest.newBuilder()
                 .setAccountNumber(accountNumber)
-                .setWithDraw(amount)
+                .setWithDrawAmount(amount)
                 .build();
 
         AccountDetails response=blockingStub.withDrawAmount(request);
@@ -105,6 +107,23 @@ public class AccountClient {
         }
         System.out.println();
     }
+
+    //TransferAmount request
+    public void transferAmount(int fromAccount, int toAccount, float transferAmount){
+        TransferAmountRequest request=TransferAmountRequest.newBuilder()
+                .setFromAccount(fromAccount)
+                .setToAccount(toAccount)
+                .setTransferAmount(transferAmount)
+                .build();
+
+        TransferAmountResponse response=blockingStub.transferAmount(request);
+        if(response.getSuccess()){
+            System.out.println("Transfer successful.");
+        }else{
+            System.out.println("Transfer failed.");
+        }
+        System.out.println();
+    }
     public static void main(String[] args){
         ManagedChannel channel=ManagedChannelBuilder.forAddress("localhost",50051)
                 .usePlaintext()
@@ -113,18 +132,25 @@ public class AccountClient {
         AccountClient client=new AccountClient(channel);
 
         //Create new Account
-        client.createAccount("Hari",200060.0f);
+        client.createAccount("Hari",20000.0f);
         client.createAccount("Raja",4000.0f);
 
-        client.updateAccount(1002,"Raja",200050.0f);
+        //client.updateAccount(1002,"Raja",200050.0f);
 
-        client.deleteAccount(1001);
+        //client.deleteAccount(1001);
 
-        client.getAccountDetails(1001);
+        //client.getAccountDetails(1001);
 
         client.depositAmount(1002,6000.0f);
 
         client.withDrawAmount(1002,4000.0f);
+
+        client.getAccountDetails(1002);
+
+        client.transferAmount(1001,1002,10000.0f);
+
+        client.getAccountDetails(1002);
+
         channel.shutdown();
     }
 }
