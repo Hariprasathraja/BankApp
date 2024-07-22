@@ -34,10 +34,16 @@ message DepositAmountRequest{
   float deposit=2;
 }
 
+message WithDrawAmountRequest{
+  int32 accountNumber=1;
+  float withDraw=2;
+}
+
 service AccountService{
   rpc GetAccountDetails(AccountRequest) returns (AccountDetails);
   rpc CreateAccount(CreateAccountRequest) returns (AccountDetails);
   rpc UpdateAccount(UpdateAccountRequest) returns (AccountDetails);
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
   rpc DepositAmount(DepositAmountRequest) returns (AccountDetails);
+  rpc WithDrawAmount(WithDrawAmountRequest) returns (AccountDetails);
 }
