@@ -5,6 +5,7 @@ import com.demo.app.Bank.CreateAccountRequest;
 import com.demo.app.Bank.UpdateAccountRequest;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
+import com.demo.app.Bank.DepositAmountRequest;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -79,6 +80,27 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                 .build();
 
         responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    //DepositAmount Service
+    public void depositAmount(DepositAmountRequest request,StreamObserver<AccountDetails> responseObserver){
+        int accountNumber=request.getAccountNumber();
+        AccountDetails accountDetails= accounts.get(accountNumber);
+        if(accountDetails!=null){
+            accountDetails=AccountDetails.newBuilder()
+                    .setAccountNumber(accountNumber)
+                    .setName(accountDetails.getName())
+                    .setBalance(accountDetails.getBalance()+request.getDeposit())
+                    .build();
+        }else{
+            accountDetails=AccountDetails.newBuilder()
+                    .setAccountNumber(accountNumber)
+                    .setName("Unknown")
+                    .setBalance(0.0f)
+                    .build();
+        }
+        responseObserver.onNext(accountDetails);
         responseObserver.onCompleted();
     }
     public static void main(String[] args)throws IOException, InterruptedException{

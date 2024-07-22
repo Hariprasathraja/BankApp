@@ -5,6 +5,7 @@ import com.demo.app.Bank.CreateAccountRequest;
 import com.demo.app.Bank.UpdateAccountRequest;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
+import com.demo.app.Bank.DepositAmountRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
@@ -15,6 +16,7 @@ public class AccountClient {
         blockingStub=AccountServiceGrpc.newBlockingStub(channel);
     }
 
+    //GetAccountDetails request
     public void getAccountDetails(int accountNumber){
         AccountRequest request=AccountRequest.newBuilder().setAccountNumber(accountNumber).build();
         AccountDetails response=blockingStub.getAccountDetails(request);
@@ -66,6 +68,24 @@ public class AccountClient {
         }
         System.out.println();
     }
+
+    //DepositAmount request
+    public void depositAmount(int accountNumber, float deposit){
+        DepositAmountRequest request=DepositAmountRequest.newBuilder()
+                .setAccountNumber(accountNumber)
+                .setDeposit(deposit)
+                .build();
+
+        AccountDetails response=blockingStub.depositAmount(request);
+        if(response.getBalance()==0.0f){
+            System.out.println("Account "+accountNumber+" not found.");
+        }else{
+            System.out.println("Account number: "+response.getAccountNumber());
+            System.out.println("Amount: "+deposit+" successfully deposited");
+            System.out.println("Total Balance: "+response.getBalance());
+        }
+        System.out.println();
+    }
     public static void main(String[] args){
         ManagedChannel channel=ManagedChannelBuilder.forAddress("localhost",50051)
                 .usePlaintext()
@@ -80,7 +100,10 @@ public class AccountClient {
         client.updateAccount(1002,"Raja",200050.0f);
 
         client.deleteAccount(1001);
+
         client.getAccountDetails(1001);
+
+        client.depositAmount(1002,6000.0f);
         channel.shutdown();
     }
 }
