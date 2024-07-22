@@ -6,6 +6,7 @@ import com.demo.app.Bank.UpdateAccountRequest;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
+import com.demo.app.Bank.WithDrawAmountRequest;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -84,6 +85,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     }
 
     //DepositAmount Service
+    @Override
     public void depositAmount(DepositAmountRequest request,StreamObserver<AccountDetails> responseObserver){
         int accountNumber=request.getAccountNumber();
         AccountDetails accountDetails= accounts.get(accountNumber);
@@ -93,6 +95,31 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                     .setName(accountDetails.getName())
                     .setBalance(accountDetails.getBalance()+request.getDeposit())
                     .build();
+            accounts.put(accountNumber,accountDetails);
+        }else{
+            accountDetails=AccountDetails.newBuilder()
+                    .setAccountNumber(accountNumber)
+                    .setName("Unknown")
+                    .setBalance(0.0f)
+                    .build();
+        }
+        responseObserver.onNext(accountDetails);
+        responseObserver.onCompleted();
+    }
+
+    //WithDrawAmount Service
+    @Override
+    public void withDrawAmount(WithDrawAmountRequest request,StreamObserver<AccountDetails> responseObserver){
+        int accountNumber=request.getAccountNumber();
+        AccountDetails accountDetails=accounts.get(accountNumber);
+
+        if(accountDetails!=null && accountDetails.getBalance()-request.getWithDraw()>0.0f){
+            accountDetails=AccountDetails.newBuilder()
+                    .setAccountNumber(accountNumber)
+                    .setName(accountDetails.getName())
+                    .setBalance(accountDetails.getBalance()-request.getWithDraw())
+                    .build();
+            accounts.put(accountNumber,accountDetails);
         }else{
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)

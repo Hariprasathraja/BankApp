@@ -6,6 +6,7 @@ import com.demo.app.Bank.UpdateAccountRequest;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
+import com.demo.app.Bank.WithDrawAmountRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
@@ -70,10 +71,10 @@ public class AccountClient {
     }
 
     //DepositAmount request
-    public void depositAmount(int accountNumber, float deposit){
+    public void depositAmount(int accountNumber, float amount){
         DepositAmountRequest request=DepositAmountRequest.newBuilder()
                 .setAccountNumber(accountNumber)
-                .setDeposit(deposit)
+                .setDeposit(amount)
                 .build();
 
         AccountDetails response=blockingStub.depositAmount(request);
@@ -81,7 +82,25 @@ public class AccountClient {
             System.out.println("Account "+accountNumber+" not found.");
         }else{
             System.out.println("Account number: "+response.getAccountNumber());
-            System.out.println("Amount: "+deposit+" successfully deposited");
+            System.out.println("Amount: "+amount+" successfully deposited");
+            System.out.println("Total Balance: "+response.getBalance());
+        }
+        System.out.println();
+    }
+
+    //WithDrawAmount request
+    public void withDrawAmount(int accountNumber, float amount){
+        WithDrawAmountRequest request=WithDrawAmountRequest.newBuilder()
+                .setAccountNumber(accountNumber)
+                .setWithDraw(amount)
+                .build();
+
+        AccountDetails response=blockingStub.withDrawAmount(request);
+        if(response.getBalance()==0.0f){
+            System.out.println("Account "+accountNumber+" not found or Insufficient Balance!!!");
+        }else{
+            System.out.println("Account number: "+response.getAccountNumber());
+            System.out.println("Amount: "+amount+" successfully withDrawn");
             System.out.println("Total Balance: "+response.getBalance());
         }
         System.out.println();
@@ -104,6 +123,8 @@ public class AccountClient {
         client.getAccountDetails(1001);
 
         client.depositAmount(1002,6000.0f);
+
+        client.withDrawAmount(1002,4000.0f);
         channel.shutdown();
     }
 }
