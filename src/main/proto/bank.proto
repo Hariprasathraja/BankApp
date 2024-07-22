@@ -28,9 +28,16 @@ message DeleteAccountRequest{
 message DeleteAccountResponse{
   bool success=1;
 }
+
+message DepositAmountRequest{
+  int32 accountNumber=1;
+  float deposit=2;
+}
+
 service AccountService{
   rpc GetAccountDetails(AccountRequest) returns (AccountDetails);
   rpc CreateAccount(CreateAccountRequest) returns (AccountDetails);
   rpc UpdateAccount(UpdateAccountRequest) returns (AccountDetails);
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
+  rpc DepositAmount(DepositAmountRequest) returns (AccountDetails);
 }
