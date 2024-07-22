@@ -31,14 +31,23 @@ message DeleteAccountResponse{
 
 message DepositAmountRequest{
   int32 accountNumber=1;
-  float deposit=2;
+  float depositAmount=2;
 }
 
 message WithDrawAmountRequest{
   int32 accountNumber=1;
-  float withDraw=2;
+  float withDrawAmount=2;
 }
 
+message TransferAmountRequest{
+  int32 fromAccount=1;
+  int32 toAccount=2;
+  float transferAmount=3;
+}
+
+message TransferAmountResponse{
+  bool success=1;
+}
 service AccountService{
   rpc GetAccountDetails(AccountRequest) returns (AccountDetails);
   rpc CreateAccount(CreateAccountRequest) returns (AccountDetails);
@@ -46,4 +55,5 @@ service AccountService{
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
   rpc DepositAmount(DepositAmountRequest) returns (AccountDetails);
   rpc WithDrawAmount(WithDrawAmountRequest) returns (AccountDetails);
+  rpc TransferAmount(TransferAmountRequest) returns (TransferAmountResponse);
 }
