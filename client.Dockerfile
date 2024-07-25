@@ -26,4 +26,4 @@ RUN ./gradlew build
 EXPOSE 50051
 
 # Run the application
-CMD ["./gradlew", "run"]
+CMD ["./gradlew", "runClient"]
