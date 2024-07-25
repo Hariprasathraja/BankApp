@@ -72,3 +72,9 @@ task runClient(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'com.demo.app.AccountClient'
 }
+
+//Task to run the test
+task runServiceTest(type: JavaExec){
+    classpath = sourceSets.main.runtimeClasspath
+    main='com.demo.app.AccountServiceTest'
+}

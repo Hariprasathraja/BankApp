@@ -10,7 +10,6 @@ import com.demo.app.Bank.WithDrawAmountRequest;
 import com.demo.app.Bank.TransferAmountRequest;
 import com.demo.app.Bank.TransferAmountResponse;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 
 public class AccountClient {
     private final AccountServiceGrpc.AccountServiceBlockingStub blockingStub;
@@ -123,34 +122,5 @@ public class AccountClient {
             System.out.println("Transfer failed.");
         }
         System.out.println();
-    }
-    public static void main(String[] args){
-        ManagedChannel channel=ManagedChannelBuilder.forAddress("accountserver",50051)
-                .usePlaintext()
-                .build();
-
-        AccountClient client=new AccountClient(channel);
-
-        //Create new Account
-        client.createAccount("Hari",20000.0f);
-        client.createAccount("Raja",4000.0f);
-
-        //client.updateAccount(1002,"Raja",200050.0f);
-
-        //client.deleteAccount(1001);
-
-        //client.getAccountDetails(1001);
-
-        client.depositAmount(1002,6000.0f);
-
-        client.withDrawAmount(1002,4000.0f);
-
-        client.getAccountDetails(1002);
-
-        client.transferAmount(1001,1002,10000.0f);
-
-        client.getAccountDetails(1002);
-
-        channel.shutdown();
     }
 }
