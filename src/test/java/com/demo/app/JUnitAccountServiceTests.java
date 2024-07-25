@@ -4,13 +4,12 @@ import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class JUnitAccountServiceTests {
 
     private static ManagedChannel channel;
@@ -30,11 +29,12 @@ public class JUnitAccountServiceTests {
     }
 
     @Test
+    @Order(1)
     //CreateAccount Test
     public void createAccountTest() {
         client.createAccount("Hari", 2000.0f);
         AccountRequest request = AccountRequest.newBuilder()
-                .setAccountNumber(1007)
+                .setAccountNumber(1001)
                 .build();
         AccountDetails response = client.getBlockingStub().getAccountDetails(request);
         assertNotNull(response);
@@ -44,6 +44,7 @@ public class JUnitAccountServiceTests {
     }
 
     @Test
+    @Order(2)
     //GetAccount Test
     public void getAccountTest() {
         client.createAccount("Prasath", 10000.0f);
@@ -54,5 +55,69 @@ public class JUnitAccountServiceTests {
         assertNotNull(response);
         assertEquals("Prasath", response.getName());
         assertEquals(10000.0f, response.getBalance());
+    }
+
+    @Test
+    @Order(3)
+    //UpdateAccount Test
+    public void updateAccountTest() {
+        client.updateAccount(1001, "Raja", 4500.0f);
+        AccountRequest request = AccountRequest.newBuilder()
+                .setAccountNumber(1001)
+                .build();
+        AccountDetails response = client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals("Raja", response.getName());
+        assertEquals(4500.0f, response.getBalance());
+    }
+
+    @Test
+    @Order(4)
+    //DeleteAccount Test
+    public void deleteAccountTest() {
+        client.deleteAccount(1002);
+        AccountRequest request = AccountRequest.newBuilder()
+                .setAccountNumber(1002)
+                .build();
+        AccountDetails response = client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals("Unknown", response.getName());
+    }
+
+    @Test
+    @Order(5)
+    //DepositAmount Test
+    public void depositAmountTest() {
+        AccountRequest request = AccountRequest.newBuilder()
+                .setAccountNumber(1001)
+                .build();
+        AccountDetails response = client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        float balance = response.getBalance();
+        client.depositAmount(1001, 5000.0f);
+        request = AccountRequest.newBuilder()
+                .setAccountNumber(1001)
+                .build();
+        response = client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals(5000.0f + balance, response.getBalance());
+    }
+
+    @Test
+    @Order(6)
+    public void withDrawAmountTest() {
+        AccountRequest request = AccountRequest.newBuilder()
+                .setAccountNumber(1001)
+                .build();
+        AccountDetails response = client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        float balance = response.getBalance();
+        client.withDrawAmount(1001, 3000.0f);
+        request = AccountRequest.newBuilder()
+                .setAccountNumber(1001)
+                .build();
+        response = client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals(balance - 3000.0f, response.getBalance());
     }
 }
