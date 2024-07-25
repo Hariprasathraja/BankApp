@@ -18,6 +18,9 @@ public class AccountClient {
         blockingStub=AccountServiceGrpc.newBlockingStub(channel);
     }
 
+    public AccountServiceGrpc.AccountServiceBlockingStub getBlockingStub(){
+        return blockingStub;
+    }
     //GetAccountDetails request
     public void getAccountDetails(int accountNumber){
         AccountRequest request=AccountRequest.newBuilder().setAccountNumber(accountNumber).build();
