@@ -125,7 +125,7 @@ public class AccountClient {
         System.out.println();
     }
     public static void main(String[] args){
-        ManagedChannel channel=ManagedChannelBuilder.forAddress("localhost",50051)
+        ManagedChannel channel=ManagedChannelBuilder.forAddress("accountserver",50051)
                 .usePlaintext()
                 .build();
 
