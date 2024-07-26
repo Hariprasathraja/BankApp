@@ -105,6 +105,7 @@ public class JUnitAccountServiceTests {
 
     @Test
     @Order(6)
+    //WithDrawAmount Test
     public void withDrawAmountTest() {
         AccountRequest request = AccountRequest.newBuilder()
                 .setAccountNumber(1001)
@@ -119,5 +120,25 @@ public class JUnitAccountServiceTests {
         response = client.getBlockingStub().getAccountDetails(request);
         assertNotNull(response);
         assertEquals(balance - 3000.0f, response.getBalance());
+    }
+
+    @Disabled
+    @Test
+    //TransferAmount Test
+    public void transferAmount(){
+        client.createAccount("Hari",6000.0f);
+        client.createAccount("Raja",500.0f);
+        client.transferAmount(1001,1002,2000.0f);
+        AccountRequest request=AccountRequest.newBuilder()
+                .setAccountNumber(1001)
+                .build();
+        AccountDetails response=client.getBlockingStub().getAccountDetails(request);
+        assertEquals(6000.0f-2000.0f,response.getBalance());
+
+        request=AccountRequest.newBuilder()
+                .setAccountNumber(1002)
+                .build();
+        response=client.getBlockingStub().getAccountDetails(request);
+        assertEquals(500.0f+2000.0f,response.getBalance());
     }
 }
