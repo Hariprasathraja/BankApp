@@ -9,6 +9,10 @@ import com.demo.app.Bank.DepositAmountRequest;
 import com.demo.app.Bank.WithDrawAmountRequest;
 import com.demo.app.Bank.TransferAmountRequest;
 import com.demo.app.Bank.TransferAmountResponse;
+import com.demo.app.Bank.TransactionDetails;
+import com.demo.app.Bank.TransactionHistoryRequest;
+import com.demo.app.Bank.TransactionHistoryResponse;
+
 import io.grpc.ManagedChannel;
 
 public class AccountClient {
@@ -125,5 +129,22 @@ public class AccountClient {
             System.out.println("Transfer failed.");
         }
         System.out.println();
+    }
+
+    //Transaction History
+    public void transactionHistory(int accountNumber){
+        TransactionHistoryRequest request=TransactionHistoryRequest.newBuilder()
+                .setAccountNumber(accountNumber)
+                .build();
+
+        TransactionHistoryResponse response=blockingStub.getTransactionHistory(request);
+        System.out.println("Transaction history for account number: "+accountNumber);
+        for(TransactionDetails transaction: response.getTransactionsList()){
+            System.out.println("Transaction ID: "+transaction.getTransactionId());
+            System.out.println("Type: "+transaction.getType());
+            System.out.println("Amount: "+transaction.getAmount());
+            System.out.println("TimeStamp: "+transaction.getTimeStamp());
+            System.out.println();
+        }
     }
 }

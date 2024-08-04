@@ -1,4 +1,5 @@
 package com.demo.app;
+
 import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
@@ -9,16 +10,24 @@ import com.demo.app.Bank.DepositAmountRequest;
 import com.demo.app.Bank.WithDrawAmountRequest;
 import com.demo.app.Bank.TransferAmountRequest;
 import com.demo.app.Bank.TransferAmountResponse;
+import com.demo.app.Bank.TransactionDetails;
+import com.demo.app.Bank.TransactionHistoryRequest;
+import com.demo.app.Bank.TransactionHistoryResponse;
+
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
+
 import java.io.IOException;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.*;
 
 public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBase{
-    private final AtomicInteger accountNumGenerator=new AtomicInteger((1000));
+    private final AtomicInteger accountNumGenerator=new AtomicInteger(1000);
+    private final AtomicInteger transactionIdCounter= new AtomicInteger(0);
     private final Map<Integer, AccountDetails> accounts=new HashMap<>();
+    private final Map<Integer, List<TransactionDetails>> transactionHistory=new HashMap<>();
     //Get AccountDetails Service
     @Override
     public void getAccountDetails(AccountRequest request, StreamObserver<AccountDetails> responseObserver){
@@ -98,6 +107,8 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                     .setBalance(accountDetails.getBalance()+request.getDepositAmount())
                     .build();
             accounts.put(accountNumber,accountDetails);
+
+            recordTransaction(accountNumber,"Deposit",request.getDepositAmount());
         }else{
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
@@ -122,6 +133,8 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                     .setBalance(accountDetails.getBalance()-request.getWithDrawAmount())
                     .build();
             accounts.put(accountNumber,accountDetails);
+
+            recordTransaction(accountNumber,"WithDraw",request.getWithDrawAmount());
         }else{
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
@@ -159,6 +172,9 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
             accounts.put(fromAccountNumber,fromAccountDetails);
             accounts.put(toAccountNumber,toAccountDetails);
 
+            recordTransaction(fromAccountNumber,"Transfer",-transferAmount);
+            recordTransaction(toAccountNumber,"Transfer",-transferAmount);
+
             success=true;
         }
         TransferAmountResponse response=TransferAmountResponse.newBuilder()
@@ -168,6 +184,28 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onCompleted();
     }
 
+    //Records TransactionDetails
+    public void recordTransaction(int accountNumber, String type, float amount){
+        int transactionID=transactionIdCounter.incrementAndGet();
+        TransactionDetails transactionDetails=TransactionDetails.newBuilder()
+                .setTransactionId(transactionID)
+                .setType(type)
+                .setAmount(amount)
+                .setTimeStamp(Instant.now().toString())
+                .build();
+
+        transactionHistory.computeIfAbsent(accountNumber,k->new ArrayList<>()).add(transactionDetails);
+    }
+    //TransactionHistory Service
+    @Override
+    public void getTransactionHistory(TransactionHistoryRequest request, StreamObserver<TransactionHistoryResponse> responseObserver) {
+        int accountNumber=request.getAccountNumber();
+        List<TransactionDetails> transactions= transactionHistory.getOrDefault(accountNumber,Collections.emptyList());
+        TransactionHistoryResponse.Builder response=TransactionHistoryResponse.newBuilder();
+        response.addAllTransactions(transactions);
+        responseObserver.onNext(response.build());
+        responseObserver.onCompleted();
+    }
 
     public static void main(String[] args)throws IOException, InterruptedException{
         Server server=ServerBuilder.forPort(50051)

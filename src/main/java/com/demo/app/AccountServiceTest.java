@@ -36,7 +36,10 @@ public class AccountServiceTest {
     public void transferAmountTest(int fromAccount, int toAccount, float amount){
         client.transferAmount(fromAccount, toAccount, amount);
     }
-
+    //TransactionHistory
+    public void transactionHistory(int accountNumber){
+        client.transactionHistory(accountNumber);
+    }
     public static void main(String[] args) {
         ManagedChannel channel=ManagedChannelBuilder.forAddress("localhost",50051)
                 .usePlaintext()
@@ -57,6 +60,8 @@ public class AccountServiceTest {
         test.withDrawAmountTest(1001,2000.0f);
 
         test.transferAmountTest(1001,1002,8000.0f);
+
+        test.transactionHistory(1001);
 
         test.deleteAccountTest(1002);
 
