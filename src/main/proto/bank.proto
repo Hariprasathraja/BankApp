@@ -25,6 +25,9 @@ message CreateAccountRequest{
   string name=1;
   float initial_balance=2;
 }
+message CreateAccountResponse{
+  bool success=1;
+}
 
 message UpdateAccountRequest{
   int32 accountNumber=1;
@@ -67,7 +70,7 @@ message TransactionHistoryResponse{
 
 service AccountService{
   rpc GetAccountDetails(AccountRequest) returns (AccountDetails);
-  rpc CreateAccount(CreateAccountRequest) returns (AccountDetails);
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
   rpc UpdateAccount(UpdateAccountRequest) returns (AccountDetails);
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
   rpc DepositAmount(DepositAmountRequest) returns (AccountDetails);
