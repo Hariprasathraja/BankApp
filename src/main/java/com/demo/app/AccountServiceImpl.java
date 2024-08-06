@@ -126,7 +126,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int accountNumber=request.getAccountNumber();
         AccountDetails accountDetails=accounts.get(accountNumber);
 
-        if(accountDetails!=null && accountDetails.getBalance()-request.getWithDrawAmount()>0.0f){
+        if(accountDetails!=null && request.getWithDrawAmount()>0 && accountDetails.getBalance()-request.getWithDrawAmount()>0.0f){
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
                     .setName(accountDetails.getName())
@@ -153,29 +153,31 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int toAccountNumber=request.getToAccount();
         float transferAmount =request.getTransferAmount();
 
-        AccountDetails fromAccountDetails=accounts.get(fromAccountNumber);
-        AccountDetails toAccountDetails=accounts.get(toAccountNumber);
-        boolean success=false;
-        if(fromAccountDetails!=null && fromAccountDetails.getBalance()- transferAmount >0.0f){
-            fromAccountDetails=AccountDetails.newBuilder()
-                    .setAccountNumber(fromAccountNumber)
-                    .setName(fromAccountDetails.getName())
-                    .setBalance(fromAccountDetails.getBalance()- transferAmount)
-                    .build();
+        boolean success = false;
+        if(transferAmount>0) {
+            AccountDetails fromAccountDetails = accounts.get(fromAccountNumber);
+            AccountDetails toAccountDetails = accounts.get(toAccountNumber);
+            if (fromAccountDetails != null && toAccountDetails != null && fromAccountDetails.getBalance() - transferAmount > 0.0f) {
+                fromAccountDetails = AccountDetails.newBuilder()
+                        .setAccountNumber(fromAccountNumber)
+                        .setName(fromAccountDetails.getName())
+                        .setBalance(fromAccountDetails.getBalance() - transferAmount)
+                        .build();
 
-            toAccountDetails=AccountDetails.newBuilder()
-                    .setAccountNumber(toAccountNumber)
-                    .setName(toAccountDetails.getName())
-                    .setBalance(toAccountDetails.getBalance()+transferAmount)
-                    .build();
+                toAccountDetails = AccountDetails.newBuilder()
+                        .setAccountNumber(toAccountNumber)
+                        .setName(toAccountDetails.getName())
+                        .setBalance(toAccountDetails.getBalance() + transferAmount)
+                        .build();
 
-            accounts.put(fromAccountNumber,fromAccountDetails);
-            accounts.put(toAccountNumber,toAccountDetails);
+                accounts.put(fromAccountNumber, fromAccountDetails);
+                accounts.put(toAccountNumber, toAccountDetails);
 
-            recordTransaction(fromAccountNumber,"Transfer",-transferAmount);
-            recordTransaction(toAccountNumber,"Transfer",-transferAmount);
+                recordTransaction(fromAccountNumber, "Transfer", -transferAmount);
+                recordTransaction(toAccountNumber, "Transfer", transferAmount);
 
-            success=true;
+                success = true;
+            }
         }
         TransferAmountResponse response=TransferAmountResponse.newBuilder()
                 .setSuccess(success)
