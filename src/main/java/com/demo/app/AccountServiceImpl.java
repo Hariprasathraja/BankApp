@@ -3,6 +3,7 @@ package com.demo.app;
 import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
+import com.demo.app.Bank.CreateAccountResponse;
 import com.demo.app.Bank.UpdateAccountRequest;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
@@ -45,16 +46,23 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
 
     //CreateAccount Service
     @Override
-    public void createAccount(CreateAccountRequest request,StreamObserver<AccountDetails> responseObserver){
+    public void createAccount(CreateAccountRequest request,StreamObserver<CreateAccountResponse> responseObserver){
         int accountNumber=accountNumGenerator.incrementAndGet();
-
-        AccountDetails accountDetails=AccountDetails.newBuilder()
-                .setAccountNumber(accountNumber)
-                .setName(request.getName())
-                .setBalance(request.getInitialBalance())
+        boolean success=false;
+        String userName=request.getName();
+        if(userName.length()>4 && !userName.matches(".*[\\d@#$%^&+!=].*")) {
+            AccountDetails accountDetails = AccountDetails.newBuilder()
+                    .setAccountNumber(accountNumber)
+                    .setName(request.getName())
+                    .setBalance(request.getInitialBalance())
+                    .build();
+            accounts.put(accountNumber, accountDetails);
+            success=true;
+        }
+        CreateAccountResponse response=CreateAccountResponse.newBuilder()
+                .setSuccess(success)
                 .build();
-        accounts.put(accountNumber,accountDetails);
-        responseObserver.onNext(accountDetails);
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 

@@ -2,6 +2,7 @@ package com.demo.app;
 import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
+import com.demo.app.Bank.CreateAccountResponse;
 import com.demo.app.Bank.UpdateAccountRequest;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
@@ -41,10 +42,13 @@ public class AccountClient {
                 .setInitialBalance(initialBalance)
                 .build();
 
-        AccountDetails response=blockingStub.createAccount(request);
-        System.out.println("Created Account Number: "+response.getAccountNumber());
-        System.out.println("Account name: "+response.getName());
-        System.out.println("Account Balance: "+response.getBalance());
+        CreateAccountResponse response=blockingStub.createAccount(request);
+        if(response.getSuccess()){
+            System.out.println("Account created successfully!");
+        }else{
+            System.out.println("Invalid username!");
+            System.out.println("Username should not contains digits or special characters and the minimum length is 4.");
+        }
         System.out.println();
     }
 
