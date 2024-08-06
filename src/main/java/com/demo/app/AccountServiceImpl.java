@@ -100,7 +100,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     public void depositAmount(DepositAmountRequest request,StreamObserver<AccountDetails> responseObserver){
         int accountNumber=request.getAccountNumber();
         AccountDetails accountDetails= accounts.get(accountNumber);
-        if(accountDetails!=null){
+        if(accountDetails!=null && request.getDepositAmount()>0){
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
                     .setName(accountDetails.getName())
