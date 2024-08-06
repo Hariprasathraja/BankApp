@@ -2,6 +2,8 @@ package com.demo.app;
 
 import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
+import com.demo.app.Bank.TransactionHistoryRequest;
+import com.demo.app.Bank.TransactionHistoryResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.junit.jupiter.api.*;
@@ -125,20 +127,105 @@ public class JUnitAccountServiceTests {
     @Disabled
     @Test
     //TransferAmount Test
-    public void transferAmount(){
-        client.createAccount("Hari",6000.0f);
-        client.createAccount("Raja",500.0f);
-        client.transferAmount(1001,1002,2000.0f);
-        AccountRequest request=AccountRequest.newBuilder()
+    public void transferAmountTest() {
+        client.createAccount("Hari", 6000.0f);
+        client.createAccount("Raja", 500.0f);
+        client.transferAmount(1001, 1002, 2000.0f);
+        AccountRequest request = AccountRequest.newBuilder()
                 .setAccountNumber(1001)
                 .build();
-        AccountDetails response=client.getBlockingStub().getAccountDetails(request);
-        assertEquals(6000.0f-2000.0f,response.getBalance());
+        AccountDetails response = client.getBlockingStub().getAccountDetails(request);
+        assertEquals(6000.0f - 2000.0f, response.getBalance());
 
-        request=AccountRequest.newBuilder()
+        request = AccountRequest.newBuilder()
                 .setAccountNumber(1002)
                 .build();
+        response = client.getBlockingStub().getAccountDetails(request);
+        assertEquals(500.0f + 2000.0f, response.getBalance());
+    }
+
+    @Test
+    @Order(7)
+    //NonExistent Account Test
+    public void nonExistingAccountTest(){
+        AccountRequest request=AccountRequest.newBuilder()
+                .setAccountNumber(9999)
+                .build();
+
+        AccountDetails response=client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals("Unknown",response.getName());
+        assertEquals(0.0f,response.getBalance());
+    }
+
+    @Test
+    @Order(8)
+    //Insufficient Amount WithDraw Test
+    public void inSufficientWithDrawTest(){
+        client.createAccount("InsufficientAccountTest",100.0f);
+        client.withDrawAmount(1003,150.0f);
+        AccountRequest request=AccountRequest.newBuilder()
+                .setAccountNumber(1003)
+                .build();
+
+        AccountDetails response=client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals(100.0f,response.getBalance());
+    }
+
+    @Test
+    @Order(9)
+    //Insufficient Amount WithDraw Test
+    public void inSufficientTransferTest(){
+        client.createAccount("fromAccountTest",100.0f);
+        client.createAccount("toAccountTest",50.0f);
+        client.transferAmount(1004, 1005,200.0f);
+        AccountRequest request=AccountRequest.newBuilder()
+                .setAccountNumber(1004)
+                .build();
+
+        AccountDetails response=client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals(100.0f,response.getBalance());
+
+        request=AccountRequest.newBuilder()
+                .setAccountNumber(1005)
+                .build();
+
         response=client.getBlockingStub().getAccountDetails(request);
-        assertEquals(500.0f+2000.0f,response.getBalance());
+        assertNotNull(response);
+        assertEquals(50.0f,response.getBalance());
+    }
+
+    @Test
+    @Order(10)
+    //Negative Deposit Test
+    public void negativeDepositTest(){
+        client.createAccount("negativeDepositTest",100.0f);
+        client.depositAmount(1006,-500.0f);
+        AccountRequest request=AccountRequest.newBuilder()
+                .setAccountNumber(1006)
+                .build();
+
+        AccountDetails response=client.getBlockingStub().getAccountDetails(request);
+        assertNotNull(response);
+        assertEquals(100.0f,response.getBalance());
+    }
+
+    @Test
+    @Order(11)
+    //TransactionHistory test
+    public void transactionHistoryTest(){
+        client.createAccount("TransactionHistoryTest",500.0f);
+        client.depositAmount(1007,500.0f);
+        client.withDrawAmount(1007,800.0f);
+
+        TransactionHistoryRequest request= TransactionHistoryRequest.newBuilder()
+                .setAccountNumber(1007)
+                .build();
+
+        TransactionHistoryResponse response=client.getBlockingStub().getTransactionHistory(request);
+        assertNotNull(response);
+        assertEquals(2,response.getTransactionsCount());
     }
 }
