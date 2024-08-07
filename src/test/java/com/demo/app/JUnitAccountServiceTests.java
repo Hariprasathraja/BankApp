@@ -114,13 +114,13 @@ public class JUnitAccountServiceTests {
         AccountDetails response = client.getBlockingStub().getAccountDetails(request);
         assertNotNull(response);
         float balance = response.getBalance();
-        client.withDrawAmount(1001, 3000.0f);
+        client.withDrawAmount(1001, 300.0f);
         request = AccountRequest.newBuilder()
                 .setAccountNumber(1001)
                 .build();
         response = client.getBlockingStub().getAccountDetails(request);
         assertNotNull(response);
-        assertEquals(balance - 3000.0f, response.getBalance());
+        assertEquals(balance - 300.0f, response.getBalance());
     }
 
     @Disabled

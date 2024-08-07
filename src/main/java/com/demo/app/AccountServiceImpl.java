@@ -11,6 +11,7 @@ import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
 import com.demo.app.Bank.DepositAmountResponse;
 import com.demo.app.Bank.WithDrawAmountRequest;
+import com.demo.app.Bank.WithDrawAmountResponse;
 import com.demo.app.Bank.TransferAmountRequest;
 import com.demo.app.Bank.TransferAmountResponse;
 import com.demo.app.Bank.TransactionDetails;
@@ -52,6 +53,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int accountNumber=accountNumGenerator.incrementAndGet();
         boolean success=false;
         String userName=request.getName();
+
         if(userName.length()>3 && !userName.matches(".*[\\d@#$%^&+!=].*")) {
             AccountDetails accountDetails = AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
@@ -61,9 +63,11 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
             accounts.put(accountNumber, accountDetails);
             success=true;
         }
+
         CreateAccountResponse response=CreateAccountResponse.newBuilder()
                 .setSuccess(success)
                 .build();
+
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
@@ -75,6 +79,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         AccountDetails accountDetails=accounts.get(accountNumber);
         boolean success=true;
         String prevName=accountDetails.getName();
+
         if(accounts.containsKey(accountNumber)) {
             accountDetails = AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
@@ -85,10 +90,12 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         }else{
             success=false;
         }
+
         UpdateAccountResponse response=UpdateAccountResponse.newBuilder()
                 .setSuccess(success)
                 .setPreviousName(prevName)
                 .build();
+
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
@@ -112,8 +119,9 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     public void depositAmount(DepositAmountRequest request,StreamObserver<DepositAmountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
         boolean success=true;
-        String message="";
+        String message;
         AccountDetails accountDetails= accounts.get(accountNumber);
+
         if(accountDetails!=null && request.getDepositAmount()>0){
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
@@ -121,31 +129,33 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                     .setBalance(accountDetails.getBalance()+request.getDepositAmount())
                     .build();
             accounts.put(accountNumber,accountDetails);
-            message="Deposit Successful";
+            message="Deposit Successful!";
             recordTransaction(accountNumber,"Deposit",request.getDepositAmount());
         }else{
             success=false;
             if(accountDetails==null) message="Invalid Account Number.";
             else message="Invalid Deposit Amount.";
         }
-        accountDetails=accounts.get(accountNumber);
+
         DepositAmountResponse.Builder response=DepositAmountResponse.newBuilder()
                 .setSuccess(success)
                 .setMessage(message);
-        if(accountDetails!=null){
-            response.setBalance(accountDetails.getBalance());
-        }else{
-            response.setBalance(0);
-        }
+
+        accountDetails=accounts.get(accountNumber);
+        if(accountDetails!=null) response.setBalance(accountDetails.getBalance());
+        else response.setBalance(0);
+
         responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
 
     //WithDrawAmount Service
     @Override
-    public void withDrawAmount(WithDrawAmountRequest request,StreamObserver<AccountDetails> responseObserver){
+    public void withDrawAmount(WithDrawAmountRequest request,StreamObserver<WithDrawAmountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
         AccountDetails accountDetails=accounts.get(accountNumber);
+        boolean success=true;
+        String message;
 
         if(accountDetails!=null && request.getWithDrawAmount()>0 && accountDetails.getBalance()-request.getWithDrawAmount()>=0.0f){
             accountDetails=AccountDetails.newBuilder()
@@ -154,16 +164,24 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                     .setBalance(accountDetails.getBalance()-request.getWithDrawAmount())
                     .build();
             accounts.put(accountNumber,accountDetails);
-
+            message="WithDrawn Successful!";
             recordTransaction(accountNumber,"WithDraw",request.getWithDrawAmount());
         }else{
-            accountDetails=AccountDetails.newBuilder()
-                    .setAccountNumber(accountNumber)
-                    .setName("Unknown")
-                    .setBalance(0.0f)
-                    .build();
+            success=false;
+            if(accountDetails==null) message="Account not found.";
+            else if(request.getWithDrawAmount()<=0) message="Invalid amount.";
+            else message="Insufficient Balance.";
         }
-        responseObserver.onNext(accountDetails);
+
+        WithDrawAmountResponse.Builder response=WithDrawAmountResponse.newBuilder()
+                .setSuccess(success)
+                .setMessage(message);
+
+        accountDetails=accounts.get(accountNumber);
+        if(accountDetails!=null) response.setBalance(accountDetails.getBalance());
+        else response.setBalance(0);
+
+        responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
 
@@ -173,8 +191,9 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int fromAccountNumber=request.getFromAccount();
         int toAccountNumber=request.getToAccount();
         float transferAmount =request.getTransferAmount();
-
         boolean success = false;
+        String message;
+
         if(transferAmount>0) {
             AccountDetails fromAccountDetails = accounts.get(fromAccountNumber);
             AccountDetails toAccountDetails = accounts.get(toAccountNumber);
@@ -194,16 +213,27 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                 accounts.put(fromAccountNumber, fromAccountDetails);
                 accounts.put(toAccountNumber, toAccountDetails);
 
+                success=true;
+                message="Amount Transferred Successfully!";
                 recordTransaction(fromAccountNumber, "Transfer", -transferAmount);
                 recordTransaction(toAccountNumber, "Transfer", transferAmount);
-
-                success = true;
+            }else{
+                if (fromAccountDetails==null) message="Invalid Account Number.";
+                else if (toAccountDetails==null) message="Invalid Recipient Account Number.";
+                else message="Insufficient Balance!";
             }
+        }else{
+            message="Invalid Amount.";
         }
-        TransferAmountResponse response=TransferAmountResponse.newBuilder()
+
+        TransferAmountResponse.Builder response=TransferAmountResponse.newBuilder()
                 .setSuccess(success)
-                .build();
-        responseObserver.onNext(response);
+                .setMessage(message);
+        AccountDetails fromAccountDetails =accounts.get(fromAccountNumber);
+        if(fromAccountDetails !=null) response.setBalance(fromAccountDetails.getBalance());
+        else response.setBalance(0);
+
+        responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
 

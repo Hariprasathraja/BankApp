@@ -66,6 +66,11 @@ message WithDrawAmountRequest{
   int32 accountNumber=1;
   float withDrawAmount=2;
 }
+message WithDrawAmountResponse{
+  bool success=1;
+  string message=2;
+  float balance=3;
+}
 
 //Transfer Amount
 message TransferAmountRequest{
@@ -75,6 +80,8 @@ message TransferAmountRequest{
 }
 message TransferAmountResponse{
   bool success=1;
+  string message=2;
+  float balance=3;
 }
 
 //Transaction History
@@ -92,7 +99,7 @@ service AccountService{
   rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse);
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
   rpc DepositAmount(DepositAmountRequest) returns (DepositAmountResponse);
-  rpc WithDrawAmount(WithDrawAmountRequest) returns (AccountDetails);
+  rpc WithDrawAmount(WithDrawAmountRequest) returns (WithDrawAmountResponse);
   rpc TransferAmount(TransferAmountRequest) returns (TransferAmountResponse);
   rpc GetTransactionHistory(TransactionHistoryRequest) returns (TransactionHistoryResponse);
 }

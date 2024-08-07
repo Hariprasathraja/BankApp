@@ -1,4 +1,5 @@
 package com.demo.app;
+
 import com.demo.app.Bank.AccountDetails;
 import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
@@ -10,6 +11,7 @@ import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
 import com.demo.app.Bank.DepositAmountResponse;
 import com.demo.app.Bank.WithDrawAmountRequest;
+import com.demo.app.Bank.WithDrawAmountResponse;
 import com.demo.app.Bank.TransferAmountRequest;
 import com.demo.app.Bank.TransferAmountResponse;
 import com.demo.app.Bank.TransactionDetails;
@@ -110,13 +112,12 @@ public class AccountClient {
                 .setWithDrawAmount(amount)
                 .build();
 
-        AccountDetails response=blockingStub.withDrawAmount(request);
-        if(response.getBalance()==0.0f){
-            System.out.println("Account "+accountNumber+" not found or Insufficient Balance!!!");
+        WithDrawAmountResponse response=blockingStub.withDrawAmount(request);
+        if(response.getSuccess()){
+            System.out.println(response.getMessage());
+            System.out.println("Balance: "+response.getBalance());
         }else{
-            System.out.println("Account number: "+response.getAccountNumber());
-            System.out.println("Amount: "+amount+" successfully withDrawn");
-            System.out.println("Total Balance: "+response.getBalance());
+            System.out.println(response.getMessage());
         }
         System.out.println();
     }
@@ -131,9 +132,10 @@ public class AccountClient {
 
         TransferAmountResponse response=blockingStub.transferAmount(request);
         if(response.getSuccess()){
-            System.out.println("Transfer successful.");
+            System.out.println(response.getMessage());
+            System.out.println("Balance: "+response.getBalance());
         }else{
-            System.out.println("Transfer failed.");
+            System.out.println(response.getMessage());
         }
         System.out.println();
     }
