@@ -5,9 +5,11 @@ import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
 import com.demo.app.Bank.CreateAccountResponse;
 import com.demo.app.Bank.UpdateAccountRequest;
+import com.demo.app.Bank.UpdateAccountResponse;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
+import com.demo.app.Bank.DepositAmountResponse;
 import com.demo.app.Bank.WithDrawAmountRequest;
 import com.demo.app.Bank.TransferAmountRequest;
 import com.demo.app.Bank.TransferAmountResponse;
@@ -50,7 +52,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int accountNumber=accountNumGenerator.incrementAndGet();
         boolean success=false;
         String userName=request.getName();
-        if(userName.length()>4 && !userName.matches(".*[\\d@#$%^&+!=].*")) {
+        if(userName.length()>3 && !userName.matches(".*[\\d@#$%^&+!=].*")) {
             AccountDetails accountDetails = AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
                     .setName(request.getName())
@@ -68,24 +70,26 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
 
     //UpdateAccount Service
     @Override
-    public void updateAccount(UpdateAccountRequest request,StreamObserver<AccountDetails> responseObserver){
+    public void updateAccount(UpdateAccountRequest request,StreamObserver<UpdateAccountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
-        AccountDetails accountDetails;
+        AccountDetails accountDetails=accounts.get(accountNumber);
+        boolean success=true;
+        String prevName=accountDetails.getName();
         if(accounts.containsKey(accountNumber)) {
             accountDetails = AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
                     .setName(request.getName())
-                    .setBalance(request.getBalance())
+                    .setBalance(accountDetails.getBalance())
                     .build();
             accounts.put(accountNumber, accountDetails);
         }else{
-            accountDetails=AccountDetails.newBuilder()
-                    .setAccountNumber(accountNumber)
-                    .setName("Account not found")
-                    .setBalance(0.0f)
-                    .build();
+            success=false;
         }
-        responseObserver.onNext(accountDetails);
+        UpdateAccountResponse response=UpdateAccountResponse.newBuilder()
+                .setSuccess(success)
+                .setPreviousName(prevName)
+                .build();
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
@@ -105,8 +109,10 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
 
     //DepositAmount Service
     @Override
-    public void depositAmount(DepositAmountRequest request,StreamObserver<AccountDetails> responseObserver){
+    public void depositAmount(DepositAmountRequest request,StreamObserver<DepositAmountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
+        boolean success=true;
+        String message="";
         AccountDetails accountDetails= accounts.get(accountNumber);
         if(accountDetails!=null && request.getDepositAmount()>0){
             accountDetails=AccountDetails.newBuilder()
@@ -115,16 +121,23 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                     .setBalance(accountDetails.getBalance()+request.getDepositAmount())
                     .build();
             accounts.put(accountNumber,accountDetails);
-
+            message="Deposit Successful";
             recordTransaction(accountNumber,"Deposit",request.getDepositAmount());
         }else{
-            accountDetails=AccountDetails.newBuilder()
-                    .setAccountNumber(accountNumber)
-                    .setName("Unknown")
-                    .setBalance(0.0f)
-                    .build();
+            success=false;
+            if(accountDetails==null) message="Invalid Account Number.";
+            else message="Invalid Deposit Amount.";
         }
-        responseObserver.onNext(accountDetails);
+        accountDetails=accounts.get(accountNumber);
+        DepositAmountResponse.Builder response=DepositAmountResponse.newBuilder()
+                .setSuccess(success)
+                .setMessage(message);
+        if(accountDetails!=null){
+            response.setBalance(accountDetails.getBalance());
+        }else{
+            response.setBalance(0);
+        }
+        responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
 
@@ -134,7 +147,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int accountNumber=request.getAccountNumber();
         AccountDetails accountDetails=accounts.get(accountNumber);
 
-        if(accountDetails!=null && request.getWithDrawAmount()>0 && accountDetails.getBalance()-request.getWithDrawAmount()>0.0f){
+        if(accountDetails!=null && request.getWithDrawAmount()>0 && accountDetails.getBalance()-request.getWithDrawAmount()>=0.0f){
             accountDetails=AccountDetails.newBuilder()
                     .setAccountNumber(accountNumber)
                     .setName(accountDetails.getName())
@@ -165,7 +178,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         if(transferAmount>0) {
             AccountDetails fromAccountDetails = accounts.get(fromAccountNumber);
             AccountDetails toAccountDetails = accounts.get(toAccountNumber);
-            if (fromAccountDetails != null && toAccountDetails != null && fromAccountDetails.getBalance() - transferAmount > 0.0f) {
+            if (fromAccountDetails != null && toAccountDetails != null && fromAccountDetails.getBalance() - transferAmount >= 0.0f) {
                 fromAccountDetails = AccountDetails.newBuilder()
                         .setAccountNumber(fromAccountNumber)
                         .setName(fromAccountDetails.getName())

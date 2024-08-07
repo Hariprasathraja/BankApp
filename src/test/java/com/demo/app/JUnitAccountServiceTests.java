@@ -63,14 +63,13 @@ public class JUnitAccountServiceTests {
     @Order(3)
     //UpdateAccount Test
     public void updateAccountTest() {
-        client.updateAccount(1001, "Raja", 4500.0f);
+        client.updateAccount(1001, "Raja");
         AccountRequest request = AccountRequest.newBuilder()
                 .setAccountNumber(1001)
                 .build();
         AccountDetails response = client.getBlockingStub().getAccountDetails(request);
         assertNotNull(response);
         assertEquals("Raja", response.getName());
-        assertEquals(4500.0f, response.getBalance());
     }
 
     @Test

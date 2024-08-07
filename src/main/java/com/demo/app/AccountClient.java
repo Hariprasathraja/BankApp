@@ -4,9 +4,11 @@ import com.demo.app.Bank.AccountRequest;
 import com.demo.app.Bank.CreateAccountRequest;
 import com.demo.app.Bank.CreateAccountResponse;
 import com.demo.app.Bank.UpdateAccountRequest;
+import com.demo.app.Bank.UpdateAccountResponse;
 import com.demo.app.Bank.DeleteAccountRequest;
 import com.demo.app.Bank.DeleteAccountResponse;
 import com.demo.app.Bank.DepositAmountRequest;
+import com.demo.app.Bank.DepositAmountResponse;
 import com.demo.app.Bank.WithDrawAmountRequest;
 import com.demo.app.Bank.TransferAmountRequest;
 import com.demo.app.Bank.TransferAmountResponse;
@@ -53,17 +55,19 @@ public class AccountClient {
     }
 
     //UpdateAccount request
-    public void updateAccount(int accountNumber, String name, float balance){
+    public void updateAccount(int accountNumber, String name){
         UpdateAccountRequest request= UpdateAccountRequest.newBuilder()
                 .setAccountNumber(accountNumber)
                 .setName(name)
-                .setBalance(balance)
+                .setBalance(0.0f)
                 .build();
 
-        AccountDetails response=blockingStub.updateAccount(request);
-        System.out.println("Account Number: "+response.getAccountNumber());
-        System.out.println("Updated name: "+response.getName());
-        System.out.println("Account Balance: "+response.getBalance());
+        UpdateAccountResponse response=blockingStub.updateAccount(request);
+        if(response.getSuccess()){
+            System.out.println("Account name changed successfully from "+response.getPreviousName()+" to "+name+".");
+        }else{
+            System.out.println("Invalid Account Number.");
+        }
         System.out.println();
     }
 
@@ -89,13 +93,12 @@ public class AccountClient {
                 .setDepositAmount(amount)
                 .build();
 
-        AccountDetails response=blockingStub.depositAmount(request);
-        if(response.getBalance()==0.0f){
-            System.out.println("Account "+accountNumber+" not found.");
+        DepositAmountResponse response=blockingStub.depositAmount(request);
+        if(response.getSuccess()){
+            System.out.println(response.getMessage());
+            System.out.println("Balance: "+response.getBalance());
         }else{
-            System.out.println("Account number: "+response.getAccountNumber());
-            System.out.println("Amount: "+amount+" successfully deposited");
-            System.out.println("Total Balance: "+response.getBalance());
+            System.out.println(response.getMessage());
         }
         System.out.println();
     }
