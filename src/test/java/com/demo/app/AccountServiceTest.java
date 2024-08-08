@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class JUnitAccountServiceTests {
+public class AccountServiceTest {
 
     private static ManagedChannel channel;
     private static AccountClient client;
