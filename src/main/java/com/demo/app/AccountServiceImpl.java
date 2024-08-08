@@ -18,50 +18,85 @@ import com.demo.app.Bank.TransactionDetails;
 import com.demo.app.Bank.TransactionHistoryRequest;
 import com.demo.app.Bank.TransactionHistoryResponse;
 
+import com.demo.utils.DataBaseUtil;
+
 import io.grpc.Server;
+import io.grpc.Status;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.*;
 
 public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBase{
-    private final AtomicInteger accountNumGenerator=new AtomicInteger(1000);
     private final AtomicInteger transactionIdCounter= new AtomicInteger(0);
     private final Map<Integer, AccountDetails> accounts=new HashMap<>();
     private final Map<Integer, List<TransactionDetails>> transactionHistory=new HashMap<>();
+
     //Get AccountDetails Service
     @Override
     public void getAccountDetails(AccountRequest request, StreamObserver<AccountDetails> responseObserver){
         int accountNumber=request.getAccountNumber();
+        AccountDetails.Builder accountDetails=AccountDetails.newBuilder()
+                .setAccountNumber(accountNumber);
 
-        AccountDetails accountDetails=accounts.getOrDefault(accountNumber,AccountDetails.newBuilder()
-                .setAccountNumber(accountNumber)
-                .setName("Unknown")
-                .setBalance(0.0f)
-                .build());
+        try(Connection connection=DataBaseUtil.getConnection()){
+            String query="Select * From account Where account_id= ?";
+            PreparedStatement statement=connection.prepareStatement(query);
+            statement.setInt(1,accountNumber);
 
-        responseObserver.onNext(accountDetails);
+            ResultSet resultSet=statement.executeQuery();
+
+            if(resultSet.next()){
+                accountDetails.setName(resultSet.getString("account_name"))
+                        .setBalance(resultSet.getFloat("balance"));
+            }else{
+                accountDetails.setName("Account not found.")
+                        .setBalance(0.0f);
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+            responseObserver.onError(e);
+            return;
+        }
+
+        responseObserver.onNext(accountDetails.build());
         responseObserver.onCompleted();
     }
 
     //CreateAccount Service
     @Override
     public void createAccount(CreateAccountRequest request,StreamObserver<CreateAccountResponse> responseObserver){
-        int accountNumber=accountNumGenerator.incrementAndGet();
         boolean success=false;
         String userName=request.getName();
 
         if(userName.length()>3 && !userName.matches(".*[\\d@#$%^&+!=].*")) {
-            AccountDetails accountDetails = AccountDetails.newBuilder()
-                    .setAccountNumber(accountNumber)
-                    .setName(request.getName())
-                    .setBalance(request.getInitialBalance())
-                    .build();
-            accounts.put(accountNumber, accountDetails);
-            success=true;
+            try(Connection connection=DataBaseUtil.getConnection()){
+                String query="Insert Into account (account_name,balance) Values (?,?)";
+                PreparedStatement statement= connection.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
+                statement.setString(1,userName);
+                statement.setFloat(2,request.getInitialBalance());
+
+                int affectedRows=statement.executeUpdate();
+                if(affectedRows>0){
+                    success=true;
+                    ResultSet generatedKeys=statement.getGeneratedKeys();
+                    if(generatedKeys.next()){
+                        int accountNumber =generatedKeys.getInt(1);
+                        System.out.println("Created account with account number: "+accountNumber);
+                    }
+                }
+            }catch (SQLException e){
+                e.printStackTrace();
+                responseObserver.onError(Status.INTERNAL.withDescription("Database error"+e.getMessage()).withCause(e).asRuntimeException());
+                return;
+            }
         }
 
         CreateAccountResponse response=CreateAccountResponse.newBuilder()
