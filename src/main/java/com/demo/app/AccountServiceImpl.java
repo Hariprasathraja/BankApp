@@ -39,6 +39,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     private final Map<Integer, AccountDetails> accounts=new HashMap<>();
     private final Map<Integer, List<TransactionDetails>> transactionHistory=new HashMap<>();
 
+
     //Get AccountDetails Service
     @Override
     public void getAccountDetails(AccountRequest request, StreamObserver<AccountDetails> responseObserver){
@@ -47,7 +48,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                 .setAccountNumber(accountNumber);
 
         try(Connection connection=DataBaseUtil.getConnection()){
-            String query="Select * From account Where account_id= ?";
+            String query="Select * From accounts Where account_id= ?";
             PreparedStatement statement=connection.prepareStatement(query);
             statement.setInt(1,accountNumber);
 
@@ -70,6 +71,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onCompleted();
     }
 
+
     //CreateAccount Service
     @Override
     public void createAccount(CreateAccountRequest request,StreamObserver<CreateAccountResponse> responseObserver){
@@ -78,7 +80,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
 
         if(userName.length()>3 && !userName.matches(".*[\\d@#$%^&+!=].*")) {
             try(Connection connection=DataBaseUtil.getConnection()){
-                String query="Insert Into account (account_name,balance) Values (?,?)";
+                String query="Insert Into accounts (account_name,balance) Values (?,?)";
                 PreparedStatement statement= connection.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
                 statement.setString(1,userName);
                 statement.setFloat(2,request.getInitialBalance());
@@ -89,7 +91,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                     ResultSet generatedKeys=statement.getGeneratedKeys();
                     if(generatedKeys.next()){
                         int accountNumber =generatedKeys.getInt(1);
-                        System.out.println("Created account with account number: "+accountNumber);
+                        System.out.println("Created accounts with account number: "+accountNumber);
                     }
                 }
             }catch (SQLException e){
@@ -107,6 +109,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onCompleted();
     }
 
+
     //UpdateAccount Service
     @Override
     public void updateAccount(UpdateAccountRequest request,StreamObserver<UpdateAccountResponse> responseObserver){
@@ -114,7 +117,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         String prevName="";
         boolean success=true;
         try(Connection connection=DataBaseUtil.getConnection()) {
-            String query = "Select * from account Where account_id= ?";
+            String query = "Select * from accounts Where account_id= ?";
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setInt(1, accountNumber);
                 try (ResultSet resultSet = statement.executeQuery()) {
@@ -126,7 +129,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                 }
             }
             if (success) {
-                query = "Update account Set account_name= ? Where account_id= ?";
+                query = "Update accounts Set account_name= ? Where account_id= ?";
                 try (PreparedStatement statement = connection.prepareStatement(query)) {
                     statement.setString(1, request.getName());
                     statement.setInt(2, accountNumber);
@@ -151,6 +154,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onCompleted();
     }
 
+
     //DeleteAccount Service
     @Override
     public void deleteAccount(DeleteAccountRequest request, StreamObserver<DeleteAccountResponse> responseObserver){
@@ -158,14 +162,14 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         boolean success= false;
 
         try(Connection connection=DataBaseUtil.getConnection()) {
-            String query = "Select * from account Where account_id= ?";
+            String query = "Select * from accounts Where account_id= ?";
 
             try (PreparedStatement statement = connection.prepareStatement(query)) {
                 statement.setInt(1, accountNumber);
 
                 try(ResultSet resultSet = statement.executeQuery()) {
                     if (resultSet.next()) {
-                        query = "Delete From account Where account_id= ?";
+                        query = "Delete From accounts Where account_id= ?";
 
                         try(PreparedStatement deleteStatement = connection.prepareStatement(query)){
                             deleteStatement.setInt(1, accountNumber);
@@ -190,76 +194,142 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         responseObserver.onCompleted();
     }
 
+
     //DepositAmount Service
     @Override
-    public void depositAmount(DepositAmountRequest request,StreamObserver<DepositAmountResponse> responseObserver){
-        int accountNumber=request.getAccountNumber();
-        boolean success=true;
+    public void depositAmount(DepositAmountRequest request,StreamObserver<DepositAmountResponse> responseObserver) {
+        int accountNumber = request.getAccountNumber();
+        boolean success = false;
+        float newBalance=0;
         String message;
-        AccountDetails accountDetails= accounts.get(accountNumber);
 
-        if(accountDetails!=null && request.getDepositAmount()>0){
-            accountDetails=AccountDetails.newBuilder()
-                    .setAccountNumber(accountNumber)
-                    .setName(accountDetails.getName())
-                    .setBalance(accountDetails.getBalance()+request.getDepositAmount())
-                    .build();
-            accounts.put(accountNumber,accountDetails);
-            message="Deposit Successful!";
-            recordTransaction(accountNumber,"Deposit",request.getDepositAmount());
-        }else{
-            success=false;
-            if(accountDetails==null) message="Invalid Account Number.";
-            else message="Invalid Deposit Amount.";
+        try (Connection connection = DataBaseUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            String query = "Select * From accounts Where account_id= ?";
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setInt(1, accountNumber);
+                ResultSet resultSet = statement.executeQuery();
+                if (resultSet.next()) {
+                    if (request.getDepositAmount() > 0) {
+                        newBalance = resultSet.getFloat("balance") + request.getDepositAmount();
+                        query = "Update accounts Set balance= ? Where account_id= ?";
+
+                        try (PreparedStatement updateStatement = connection.prepareStatement(query)) {
+                            updateStatement.setFloat(1, newBalance);
+                            updateStatement.setInt(2, accountNumber);
+                            int rowsAffected = updateStatement.executeUpdate();
+
+                            if (rowsAffected > 0) {
+                                query = "Insert Into transactions (account_id, type, amount) Values (?,?,?)";
+                                try (PreparedStatement transactionStatement = connection.prepareStatement(query)) {
+                                    transactionStatement.setInt(1, accountNumber);
+                                    transactionStatement.setString(2, "Deposit");
+                                    transactionStatement.setFloat(3, request.getDepositAmount());
+                                    transactionStatement.executeUpdate();
+
+                                    connection.commit();
+                                    success=true;
+                                    message = "Deposit Successful";
+                                }
+                            } else {
+                                message = "Failed to Deposit";
+                                connection.rollback();
+                            }
+                        }
+                    } else {
+                        message = "Invalid Deposit amount";
+                    }
+                }else {
+                    message="Invalid account number.";
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            responseObserver.onError(e);
+            return;
         }
 
-        DepositAmountResponse.Builder response=DepositAmountResponse.newBuilder()
+        DepositAmountResponse response = DepositAmountResponse.newBuilder()
                 .setSuccess(success)
-                .setMessage(message);
+                .setMessage(message)
+                .setBalance(newBalance)
+                .build();
 
-        accountDetails=accounts.get(accountNumber);
-        if(accountDetails!=null) response.setBalance(accountDetails.getBalance());
-        else response.setBalance(0);
 
-        responseObserver.onNext(response.build());
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
+
 
     //WithDrawAmount Service
     @Override
     public void withDrawAmount(WithDrawAmountRequest request,StreamObserver<WithDrawAmountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
-        AccountDetails accountDetails=accounts.get(accountNumber);
-        boolean success=true;
+        boolean success=false;
+        float balance=0;
         String message;
 
-        if(accountDetails!=null && request.getWithDrawAmount()>0 && accountDetails.getBalance()-request.getWithDrawAmount()>=0.0f){
-            accountDetails=AccountDetails.newBuilder()
-                    .setAccountNumber(accountNumber)
-                    .setName(accountDetails.getName())
-                    .setBalance(accountDetails.getBalance()-request.getWithDrawAmount())
-                    .build();
-            accounts.put(accountNumber,accountDetails);
-            message="WithDrawn Successful!";
-            recordTransaction(accountNumber,"WithDraw",request.getWithDrawAmount());
-        }else{
-            success=false;
-            if(accountDetails==null) message="Account not found.";
-            else if(request.getWithDrawAmount()<=0) message="Invalid amount.";
-            else message="Insufficient Balance.";
+        try(Connection connection=DataBaseUtil.getConnection()){
+            connection.setAutoCommit(false);
+            String query="Select * From accounts where account_id= ?";
+
+            try(PreparedStatement statement= connection.prepareStatement(query)){
+                statement.setInt(1,accountNumber);
+                ResultSet resultSet=statement.executeQuery();
+
+                if(resultSet.next()) {
+                    float newBalance = resultSet.getFloat("balance") - request.getWithDrawAmount();
+
+                    if (request.getWithDrawAmount() > 0 && newBalance >= 0.0f) {
+                        query = "Update accounts Set balance= ? Where account_id= ?";
+                        balance=newBalance;
+                        try (PreparedStatement withDrawStatement = connection.prepareStatement(query)) {
+                            withDrawStatement.setFloat(1, newBalance);
+                            withDrawStatement.setInt(2, accountNumber);
+                            int rowAffected = withDrawStatement.executeUpdate();
+
+                            if (rowAffected > 0) {
+                                query = "Insert Into transactions (account_id,type,amount) Values (?,?,?)";
+                                try (PreparedStatement transactionStatement = connection.prepareStatement(query)) {
+                                    transactionStatement.setInt(1, accountNumber);
+                                    transactionStatement.setString(2, "WithDraw");
+                                    transactionStatement.setFloat(3, -request.getWithDrawAmount());
+                                    transactionStatement.executeUpdate();
+
+                                    connection.commit();
+                                    success=true;
+                                    message = "Withdrawal successful";
+                                }
+                            } else {
+                                message = "Failed to withDraw.";
+                                connection.rollback();
+                            }
+                        }
+                    } else {
+                        if (request.getWithDrawAmount() < 1) message = "Invalid Amount.";
+                        else message = "Insufficient Balance.";
+                    }
+                }else {
+                    message="Account not found.";
+                }
+            }
+        }catch (SQLException e) {
+            e.printStackTrace();
+            responseObserver.onError(Status.UNKNOWN.withDescription("Database error: " + e.getMessage()).withCause(e).asRuntimeException());
+            responseObserver.onError(e);
+            return;
         }
 
-        WithDrawAmountResponse.Builder response=WithDrawAmountResponse.newBuilder()
+        WithDrawAmountResponse response=WithDrawAmountResponse.newBuilder()
                 .setSuccess(success)
-                .setMessage(message);
+                .setMessage(message)
+                .setBalance(balance)
+                .build();
 
-        accountDetails=accounts.get(accountNumber);
-        if(accountDetails!=null) response.setBalance(accountDetails.getBalance());
-        else response.setBalance(0);
-
-        responseObserver.onNext(response.build());
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
+
 
     //TransferAmount Service
     @Override
