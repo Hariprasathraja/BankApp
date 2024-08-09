@@ -111,19 +111,35 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     @Override
     public void updateAccount(UpdateAccountRequest request,StreamObserver<UpdateAccountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
-        AccountDetails accountDetails=accounts.get(accountNumber);
+        String prevName="";
         boolean success=true;
-        String prevName=accountDetails.getName();
-
-        if(accounts.containsKey(accountNumber)) {
-            accountDetails = AccountDetails.newBuilder()
-                    .setAccountNumber(accountNumber)
-                    .setName(request.getName())
-                    .setBalance(accountDetails.getBalance())
-                    .build();
-            accounts.put(accountNumber, accountDetails);
-        }else{
-            success=false;
+        try(Connection connection=DataBaseUtil.getConnection()) {
+            String query = "Select * from account Where account_id= ?";
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setInt(1, accountNumber);
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        prevName = resultSet.getString("account_name");
+                    } else {
+                        success = false;
+                    }
+                }
+            }
+            if (success) {
+                query = "Update account Set account_name= ? Where account_id= ?";
+                try (PreparedStatement statement = connection.prepareStatement(query)) {
+                    statement.setString(1, request.getName());
+                    statement.setInt(2, accountNumber);
+                    int rowsAffected = statement.executeUpdate();
+                    if (rowsAffected == 0) {
+                        success = false;
+                    }
+                }
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+            responseObserver.onError(e);
+            return;
         }
 
         UpdateAccountResponse response=UpdateAccountResponse.newBuilder()
@@ -139,8 +155,33 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     @Override
     public void deleteAccount(DeleteAccountRequest request, StreamObserver<DeleteAccountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
-        boolean success= accounts.remove(accountNumber)!=null;
+        boolean success= false;
 
+        try(Connection connection=DataBaseUtil.getConnection()) {
+            String query = "Select * from account Where account_id= ?";
+
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setInt(1, accountNumber);
+
+                try(ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        query = "Delete From account Where account_id= ?";
+
+                        try(PreparedStatement deleteStatement = connection.prepareStatement(query)){
+                            deleteStatement.setInt(1, accountNumber);
+                            int rowsAffected = deleteStatement.executeUpdate();
+                            if (rowsAffected > 0) {
+                                success = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+            responseObserver.onError(e);
+            return;
+        }
         DeleteAccountResponse response=DeleteAccountResponse.newBuilder()
                 .setSuccess(success)
                 .build();
