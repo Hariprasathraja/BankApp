@@ -26,19 +26,14 @@ import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.sql.Timestamp;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.*;
 
 public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBase{
-    private final AtomicInteger transactionIdCounter= new AtomicInteger(0);
-    private final Map<Integer, AccountDetails> accounts=new HashMap<>();
-    private final Map<Integer, List<TransactionDetails>> transactionHistory=new HashMap<>();
-
 
     //Get AccountDetails Service
     @Override
@@ -160,34 +155,41 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     public void deleteAccount(DeleteAccountRequest request, StreamObserver<DeleteAccountResponse> responseObserver){
         int accountNumber=request.getAccountNumber();
         boolean success= false;
-
+        String message;
         try(Connection connection=DataBaseUtil.getConnection()) {
-            String query = "Select * from accounts Where account_id= ?";
-
-            try (PreparedStatement statement = connection.prepareStatement(query)) {
-                statement.setInt(1, accountNumber);
-
-                try(ResultSet resultSet = statement.executeQuery()) {
-                    if (resultSet.next()) {
-                        query = "Delete From accounts Where account_id= ?";
-
-                        try(PreparedStatement deleteStatement = connection.prepareStatement(query)){
-                            deleteStatement.setInt(1, accountNumber);
-                            int rowsAffected = deleteStatement.executeUpdate();
-                            if (rowsAffected > 0) {
-                                success = true;
-                            }
-                        }
+            //Check if there are any transactions linked to the account
+            String checkTransactionQuery = "Select * From transactions Where account_id= ?";
+            try (PreparedStatement checkTransactionStatement = connection.prepareStatement(checkTransactionQuery)) {
+                checkTransactionStatement.setInt(1, accountNumber);
+                try (ResultSet resultSet = checkTransactionStatement.executeQuery()) {
+                    if (resultSet.next() && resultSet.getInt(1) > 0) {
+                        message="Cannot delete account with existing transactions.";
+                        responseObserver.onError(Status.FAILED_PRECONDITION.withDescription(message).asRuntimeException());
+                        return;
                     }
+                }
+            }
+            //If no transactions exist, proceed to delete the account
+            String query = "Delete From accounts Where account_id= ?";
+            try(PreparedStatement deleteStatement = connection.prepareStatement(query)){
+                deleteStatement.setInt(1, accountNumber);
+                int rowsAffected = deleteStatement.executeUpdate();
+                if (rowsAffected > 0) {
+                    success = true;
+                    message="Account deleted successfully.";
+                }else{
+                    message="Account not found.";
                 }
             }
         }catch (SQLException e){
             e.printStackTrace();
+            responseObserver.onError(Status.UNKNOWN.withDescription("Database error: " + e.getMessage()).withCause(e).asRuntimeException());
             responseObserver.onError(e);
             return;
         }
         DeleteAccountResponse response=DeleteAccountResponse.newBuilder()
                 .setSuccess(success)
+                .setMessage(message)
                 .build();
 
         responseObserver.onNext(response);
@@ -336,75 +338,135 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
     public void transferAmount(TransferAmountRequest request,StreamObserver<TransferAmountResponse> responseObserver){
         int fromAccountNumber=request.getFromAccount();
         int toAccountNumber=request.getToAccount();
-        float transferAmount =request.getTransferAmount();
+        float transferAmount =request.getTransferAmount(), balance=0;
         boolean success = false;
         String message;
 
         if(transferAmount>0) {
-            AccountDetails fromAccountDetails = accounts.get(fromAccountNumber);
-            AccountDetails toAccountDetails = accounts.get(toAccountNumber);
-            if (fromAccountDetails != null && toAccountDetails != null && fromAccountDetails.getBalance() - transferAmount >= 0.0f) {
-                fromAccountDetails = AccountDetails.newBuilder()
-                        .setAccountNumber(fromAccountNumber)
-                        .setName(fromAccountDetails.getName())
-                        .setBalance(fromAccountDetails.getBalance() - transferAmount)
-                        .build();
+            try (Connection connection = DataBaseUtil.getConnection()) {
+                connection.setAutoCommit(false);
+                String query ="Select * From accounts Where account_id= ?";
 
-                toAccountDetails = AccountDetails.newBuilder()
-                        .setAccountNumber(toAccountNumber)
-                        .setName(toAccountDetails.getName())
-                        .setBalance(toAccountDetails.getBalance() + transferAmount)
-                        .build();
+                try (PreparedStatement fromStatement= connection.prepareStatement(query)){
+                    fromStatement.setInt(1,fromAccountNumber);
+                    try(ResultSet fromResultSet=fromStatement.executeQuery()) {
+                        if (fromResultSet.next()) {
+                            float fromBalance = fromResultSet.getFloat("balance") - transferAmount;
+                            if (fromBalance >= 0.0f) {
 
-                accounts.put(fromAccountNumber, fromAccountDetails);
-                accounts.put(toAccountNumber, toAccountDetails);
+                                try (PreparedStatement toStatement = connection.prepareStatement(query)) {
+                                    toStatement.setInt(1,toAccountNumber);
+                                    try(ResultSet toResultSet=toStatement.executeQuery()) {
+                                        if (toResultSet.next()) {
+                                            query = "Update accounts Set balance= ? Where account_id= ?";
 
-                success=true;
-                message="Amount Transferred Successfully!";
-                recordTransaction(fromAccountNumber, "Transfer", -transferAmount);
-                recordTransaction(toAccountNumber, "Transfer", transferAmount);
-            }else{
-                if (fromAccountDetails==null) message="Invalid Account Number.";
-                else if (toAccountDetails==null) message="Invalid Recipient Account Number.";
-                else message="Insufficient Balance!";
+                                            try (PreparedStatement updateStatement = connection.prepareStatement(query)) {
+                                                updateStatement.setFloat(1, fromBalance);
+                                                updateStatement.setInt(2,fromAccountNumber);
+                                                updateStatement.executeUpdate();
+
+                                                float toBalance=toResultSet.getFloat("balance")+transferAmount;
+                                                updateStatement.setFloat(1,toBalance);
+                                                updateStatement.setInt(2,toAccountNumber);
+                                                updateStatement.executeUpdate();
+
+                                                query="Insert Into transactions (account_id, type, amount) Values (?,?,?)";
+                                                try(PreparedStatement transactionStatement=connection.prepareStatement(query)){
+                                                    transactionStatement.setInt(1,fromAccountNumber);
+                                                    transactionStatement.setString(2,"Transfer out");
+                                                    transactionStatement.setFloat(3,-transferAmount);
+                                                    transactionStatement.executeUpdate();
+
+                                                    transactionStatement.setInt(1,toAccountNumber);
+                                                    transactionStatement.setString(2,"Transfer in");
+                                                    transactionStatement.setFloat(3,transferAmount);
+                                                    transactionStatement.executeUpdate();
+
+                                                    balance=fromBalance;
+                                                    connection.commit();
+                                                    success=true;
+                                                    message="Transfer successful.";
+                                                }
+                                            }
+                                        } else {
+                                            message = "Invalid Recipient account number.";
+                                        }
+                                    }
+                                }
+                            }else {
+                                message="Insufficient Balance.";
+                            }
+                        }else {
+                            message="Invalid sender account number.";
+                        }
+                    }
+                }catch (SQLException e){
+                    connection.rollback();
+                    e.printStackTrace();
+                    responseObserver.onError(Status.UNKNOWN.withDescription("Database error: " + e.getMessage()).withCause(e).asRuntimeException());
+                    return;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                responseObserver.onError(Status.UNKNOWN.withDescription("Database error: " + e.getMessage()).withCause(e).asRuntimeException());
+                return;
             }
         }else{
-            message="Invalid Amount.";
+            message="Invalid amount.";
         }
 
-        TransferAmountResponse.Builder response=TransferAmountResponse.newBuilder()
+        TransferAmountResponse response=TransferAmountResponse.newBuilder()
                 .setSuccess(success)
-                .setMessage(message);
-        AccountDetails fromAccountDetails =accounts.get(fromAccountNumber);
-        if(fromAccountDetails !=null) response.setBalance(fromAccountDetails.getBalance());
-        else response.setBalance(0);
+                .setMessage(message)
+                .setBalance(balance)
+                .build();
 
-        responseObserver.onNext(response.build());
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
-    //Records TransactionDetails
-    public void recordTransaction(int accountNumber, String type, float amount){
-        int transactionID=transactionIdCounter.incrementAndGet();
-        TransactionDetails transactionDetails=TransactionDetails.newBuilder()
-                .setTransactionId(transactionID)
-                .setType(type)
-                .setAmount(amount)
-                .setTimeStamp(Instant.now().toString())
-                .build();
 
-        transactionHistory.computeIfAbsent(accountNumber,k->new ArrayList<>()).add(transactionDetails);
-    }
     //TransactionHistory Service
     @Override
     public void getTransactionHistory(TransactionHistoryRequest request, StreamObserver<TransactionHistoryResponse> responseObserver) {
         int accountNumber=request.getAccountNumber();
-        List<TransactionDetails> transactions= transactionHistory.getOrDefault(accountNumber,Collections.emptyList());
         TransactionHistoryResponse.Builder response=TransactionHistoryResponse.newBuilder();
-        response.addAllTransactions(transactions);
+
+        try(Connection connection=DataBaseUtil.getConnection()){
+
+            String transactionHistoryQuery="Select * From transactions Where account_id= ? Order By timestamp Desc";
+
+            try (PreparedStatement transactionStatement= connection.prepareStatement(transactionHistoryQuery)){
+                transactionStatement.setInt(1,accountNumber);
+
+                try (ResultSet resultSet=transactionStatement.executeQuery()){
+                    SimpleDateFormat dateFormat=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+                    while (resultSet.next()){
+                        Timestamp timestamp=resultSet.getTimestamp("timestamp");
+                        String formattedTimestamp=dateFormat.format(timestamp);
+
+                        TransactionDetails transactionDetails=TransactionDetails.newBuilder()
+                                .setTransactionId(resultSet.getInt("transaction_id"))
+                                .setAccountNumber(resultSet.getInt("account_id"))
+                                .setType(resultSet.getString("type"))
+                                .setAmount(resultSet.getFloat("amount"))
+                                .setTimeStamp(formattedTimestamp)
+                                .build();
+
+                        response.addTransactions(transactionDetails);
+                    }
+                }
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+            responseObserver.onError(Status.UNKNOWN.withDescription("Database error: "+e.getMessage()).withCause(e).asRuntimeException());
+            return;
+        }
         responseObserver.onNext(response.build());
         responseObserver.onCompleted();
     }
+
 
     public static void main(String[] args)throws IOException, InterruptedException{
         Server server=ServerBuilder.forPort(50051)

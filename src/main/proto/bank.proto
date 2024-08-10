@@ -12,9 +12,10 @@ message AccountDetails{
 //Transaction Details
 message TransactionDetails{
   int32 transactionId=1;
-  string type=2;
-  float amount=3;
-  string timeStamp=4;
+  int32 accountNumber=2;
+  string type=3;
+  float amount=4;
+  string timeStamp=5;
 }
 
 //Get Account
@@ -48,6 +49,7 @@ message DeleteAccountRequest{
 }
 message DeleteAccountResponse{
   bool success=1;
+  string message=2;
 }
 
 //Deposit Amount

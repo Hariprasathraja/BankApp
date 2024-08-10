@@ -148,12 +148,18 @@ public class AccountClient {
 
         TransactionHistoryResponse response=blockingStub.getTransactionHistory(request);
         System.out.println("Transaction history for account number: "+accountNumber);
-        for(TransactionDetails transaction: response.getTransactionsList()){
-            System.out.println("Transaction ID: "+transaction.getTransactionId());
-            System.out.println("Type: "+transaction.getType());
-            System.out.println("Amount: "+transaction.getAmount());
-            System.out.println("TimeStamp: "+transaction.getTimeStamp());
-            System.out.println();
+        System.out.println();
+
+        if(response.getTransactionsList().isEmpty()){
+            System.out.println("No transactions found for this account.");
+        }else {
+            for (TransactionDetails transaction : response.getTransactionsList()) {
+                System.out.println("Transaction ID: " + transaction.getTransactionId());
+                System.out.println("Type: " + transaction.getType());
+                System.out.println("Amount: " + transaction.getAmount());
+                System.out.println("TimeStamp: " + transaction.getTimeStamp());
+                System.out.println();
+            }
         }
     }
 }
