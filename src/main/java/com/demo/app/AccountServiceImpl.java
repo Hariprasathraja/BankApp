@@ -35,37 +35,6 @@ import java.sql.SQLException;
 
 public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBase{
 
-    //Get AccountDetails Service
-    @Override
-    public void getAccountDetails(AccountRequest request, StreamObserver<AccountDetails> responseObserver){
-        int accountNumber=request.getAccountNumber();
-        AccountDetails.Builder accountDetails=AccountDetails.newBuilder()
-                .setAccountNumber(accountNumber);
-
-        try(Connection connection=DataBaseUtil.getConnection()){
-            String query="Select * From accounts Where account_id= ?";
-            PreparedStatement statement=connection.prepareStatement(query);
-            statement.setInt(1,accountNumber);
-
-            ResultSet resultSet=statement.executeQuery();
-
-            if(resultSet.next()){
-                accountDetails.setName(resultSet.getString("account_name"))
-                        .setBalance(resultSet.getFloat("balance"));
-            }else{
-                accountDetails.setName("Account not found.")
-                        .setBalance(0.0f);
-            }
-        }catch (SQLException e){
-            e.printStackTrace();
-            responseObserver.onError(e);
-            return;
-        }
-
-        responseObserver.onNext(accountDetails.build());
-        responseObserver.onCompleted();
-    }
-
 
     //CreateAccount Service
     @Override
@@ -75,7 +44,7 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
 
         if(userName.length()>3 && !userName.matches(".*[\\d@#$%^&+!=].*")) {
             try(Connection connection=DataBaseUtil.getConnection()){
-                String query="Insert Into accounts (account_name,balance) Values (?,?)";
+                String query="Insert Into accounts (account_name,balance,status) Values (?,?,'active')";
                 PreparedStatement statement= connection.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
                 statement.setString(1,userName);
                 statement.setFloat(2,request.getInitialBalance());
@@ -101,6 +70,44 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
                 .build();
 
         responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+
+    //GetAccountDetails Service
+    @Override
+    public void getAccountDetails(AccountRequest request, StreamObserver<AccountDetails> responseObserver){
+        int accountNumber=request.getAccountNumber();
+        AccountDetails.Builder accountDetails=AccountDetails.newBuilder()
+                .setAccountNumber(accountNumber);
+
+        try(Connection connection=DataBaseUtil.getConnection()){
+            String query="Select * From accounts Where account_id= ?";
+            PreparedStatement statement=connection.prepareStatement(query);
+            statement.setInt(1,accountNumber);
+
+            ResultSet resultSet=statement.executeQuery();
+
+            if(resultSet.next()){
+                String status=resultSet.getString("status");
+                if("inactive".equals(status)){
+                    accountDetails.setName("Account  inactive");
+                    accountDetails.setBalance(0.0f);
+                }else {
+                    accountDetails.setName(resultSet.getString("account_name"))
+                            .setBalance(resultSet.getFloat("balance"));
+                }
+            }else{
+                accountDetails.setName("Account not found.")
+                        .setBalance(0.0f);
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+            responseObserver.onError(Status.UNKNOWN.withDescription("Database error: "+e.getMessage()).withCause(e).asRuntimeException());
+            return;
+        }
+
+        responseObserver.onNext(accountDetails.build());
         responseObserver.onCompleted();
     }
 
@@ -156,27 +163,15 @@ public class AccountServiceImpl extends AccountServiceGrpc.AccountServiceImplBas
         int accountNumber=request.getAccountNumber();
         boolean success= false;
         String message;
+
         try(Connection connection=DataBaseUtil.getConnection()) {
-            //Check if there are any transactions linked to the account
-            String checkTransactionQuery = "Select * From transactions Where account_id= ?";
-            try (PreparedStatement checkTransactionStatement = connection.prepareStatement(checkTransactionQuery)) {
-                checkTransactionStatement.setInt(1, accountNumber);
-                try (ResultSet resultSet = checkTransactionStatement.executeQuery()) {
-                    if (resultSet.next() && resultSet.getInt(1) > 0) {
-                        message="Cannot delete account with existing transactions.";
-                        responseObserver.onError(Status.FAILED_PRECONDITION.withDescription(message).asRuntimeException());
-                        return;
-                    }
-                }
-            }
-            //If no transactions exist, proceed to delete the account
-            String query = "Delete From accounts Where account_id= ?";
+            String query = "Update accounts Set status='inactive' Where account_id= ?";
             try(PreparedStatement deleteStatement = connection.prepareStatement(query)){
                 deleteStatement.setInt(1, accountNumber);
                 int rowsAffected = deleteStatement.executeUpdate();
                 if (rowsAffected > 0) {
                     success = true;
-                    message="Account deleted successfully.";
+                    message="Account deactivated successfully.";
                 }else{
                     message="Account not found.";
                 }
