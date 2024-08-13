@@ -5,7 +5,8 @@ USE bank_db;
 CREATE TABLE IF NOT EXISTS accounts (
     account_id INT AUTO_INCREMENT PRIMARY KEY,
     account_name VARCHAR(255) NOT NULL,
-    balance DECIMAL(15, 2) NOT NULL
+    balance DECIMAL(15, 2) NOT NULL,
+    status ENUM('active','inactive')DEFAULT 'active'
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
