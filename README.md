@@ -102,7 +102,7 @@ The MySQL database is available at localhost:3306.
 
 
 ## Project Structure
-
+```
 BankApplication/
 │
 ├── server/                # Backend services (Java, gRPC)
@@ -117,6 +117,7 @@ BankApplication/
 ├── docker-compose.yml      # Docker Compose configuration
 ├── init.sql                # MySQL database initialization script
 └── README.md               # Project documentation
+```
 
 ## API Endpoints
 -gRPC Services
