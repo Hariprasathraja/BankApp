@@ -121,8 +121,8 @@ BankApplication/
 
 ## API Endpoints
 -gRPC Services
--**Authentication Service**: Handles user login and signup.
--**Account Service**: Manages account creation, balance inquiry, and transaction history.
--**Transaction Service**: Processes deposits, withdrawals, and transfers.
+- **Authentication Service**: Handles user login and signup.
+- **Account Service**: Manages account creation, balance inquiry, and transaction history.
+- **Transaction Service**: Processes deposits, withdrawals, and transfers.
 
 
