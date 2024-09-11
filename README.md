@@ -8,7 +8,6 @@ A secure and efficient bank application using microservices architecture with gR
 - [Architecture](#architecture)
 - [Setup Instructions](#setup-instructions)
   - [Requirements](#requirements)
-  - [Environment Variables](#environment-variables)
   - [Running the Project](#running-the-project)
   - [Running with Docker](#running-with-docker)
   - [Running with Docker Compose](#running-with-docker-compose)
@@ -54,16 +53,20 @@ Before setting up the project, ensure you have the following tools installed:
 ```bash
 git clone https://github.com/yourusername/BankApplication.git
 cd BankApplication
+```
 
-#### 2. For the backend
+#### 2. Build the Backend
 ```bash
 Copy code
 ./gradlew build
+```
 
 #### 3. Build and Run the Backend (gRPC Server)
 ```bash
 Copy code
 ./gradlew runServer
+```
+The gRPC server will start on localhost:50051.
 
 ### Running with Docker
 
@@ -72,22 +75,23 @@ Copy code
 Copy code
 docker build -t bankapp-server -f server.Dockerfile .
 docker build -t bankapp-client -f client.Dockerfile .
+```
 
 #### 2. Run Docker Containers
 ```bash
 Copy code
 docker run -p 50051:50051 bankapp-server
 docker run -p 8080:8080 bankapp-client
-
+```
 
 ### Running with Docker Compose
-
 To spin up the entire application (server, database, etc.) with Docker Compose:
 
 #### 1. Build and Run Docker Compose
 ```bash
 Copy code
 docker-compose up --build
+```
 This will start:
 accountserver on port 50051
 mysql on port 3306
@@ -96,7 +100,8 @@ mysql on port 3306
 The gRPC server is available at localhost:50051.
 The MySQL database is available at localhost:3306.
 
-### Project  Strucutre
+
+## Project Structure
 
 BankApplication/
 │
@@ -107,15 +112,16 @@ BankApplication/
 │
 ├── client/                # Frontend application (Flutter)
 │   ├── lib/
-│   └── client.Docker
-file
+│   └── client.Dockerfile
 │
 ├── docker-compose.yml      # Docker Compose configuration
 ├── init.sql                # MySQL database initialization script
 └── README.md               # Project documentation
 
-### API Endpoints
-gRPC Services
-Authentication Service: Handles user login and signup.
-Account Service: Manages account creation, balance inquiry, and transaction history.
-Transaction Service: Processes deposits, withdrawals, and transfers.
+## API Endpoints
+-gRPC Services
+-**Authentication Service**: Handles user login and signup.
+-**Account Service**: Manages account creation, balance inquiry, and transaction history.
+-**Transaction Service**: Processes deposits, withdrawals, and transfers.
+
+
